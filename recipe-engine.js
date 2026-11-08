@@ -127,7 +127,7 @@ Order is irrelevant. Same pair must give same result. You may reuse an ingredien
 Choose an emoji as close as possible to the common Infinite Craft visual style: ordinary, expressive Unicode emoji, rather than text symbols. When no exact emoji exists, use the nearest recognizable emoji.
 Reply with only a JSON object: {"word":"...","emoji":"..."}. Word normally 1-3 words, max 5. Emoji max 2 grapheme clusters.`;
 async function askAI(a,b){
- const model=process.env.GEMINI_MODEL||'gemini-2.5-flash-lite';
+ const model=process.env.GEMINI_MODEL||'gemini-3.5-flash-lite';
  const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
  let response;
  try{
@@ -137,12 +137,13 @@ async function askAI(a,b){
    body:JSON.stringify({
     systemInstruction:{parts:[{text:systemPrompt}]},
     contents:[{role:'user',parts:[{text:JSON.stringify({ingredient1:a,ingredient2:b})}]}],
-    generationConfig:{temperature:0.65,responseMimeType:'application/json',maxOutputTokens:250}
+    generationConfig:{temperature:0.65,responseMimeType:'application/json',maxOutputTokens:900}
    })
   });
  }catch(error){throw new Error('Free AI connection failed. Try again shortly.');}
  if(!response.ok){
   const body=await response.text().catch(()=>'');console.error('Gemini API error',response.status,body.slice(0,500));
+  if(response.status===404)throw new Error('Gemini model not available. Set GEMINI_MODEL to a supported free-tier model in Render.');
   if(response.status===429)throw new Error('Free AI daily/minute limit reached. Try again later.');
   if(response.status===403||response.status===401)throw new Error('Gemini key is invalid or its free tier is unavailable for this project.');
   throw new Error('Free AI service unavailable right now.');

@@ -22,3 +22,6 @@ Known recipes are handled immediately. Unknown combinations call Gemini server-s
 
 ## Local development (optional, not required for players)
 `npm install` then `npm start` (Node.js 18+). Add `GEMINI_API_KEY` to your shell environment to enable AI.
+
+## Latest update
+Gemini default model: `gemini-3.5-flash-lite`. Optional override: `GEMINI_MODEL` in Render Environment. Browser controls support pointer dragging, panning, scrolling zoom, subtle pop animations, and synthesized toggleable audio (no sound files). AI availability and free quotas depend on Google.
