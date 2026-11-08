@@ -132,12 +132,12 @@ async function askAI(a,b){
  let response;
  try{
   response=await fetch(endpoint,{
-   method:'POST',signal:AbortSignal.timeout(25000),
+   method:'POST',signal:AbortSignal.timeout(18000),
    headers:{'Content-Type':'application/json','x-goog-api-key':process.env.GEMINI_API_KEY},
    body:JSON.stringify({
     systemInstruction:{parts:[{text:systemPrompt}]},
     contents:[{role:'user',parts:[{text:JSON.stringify({ingredient1:a,ingredient2:b})}]}],
-    generationConfig:{temperature:0.65,responseMimeType:'application/json',maxOutputTokens:900}
+    generationConfig:{temperature:0.65,responseMimeType:'application/json',maxOutputTokens:512}
    })
   });
  }catch(error){throw new Error('Free AI connection failed. Try again shortly.');}
@@ -164,7 +164,7 @@ export async function combine(a,b){
  const task=(async()=>{
   let result;
   for(let attempt=0;attempt<2;attempt++){
-   try{result=await askAI(a,b);break}catch(e){if(attempt===1||/rate limit|unavailable/.test(e.message))throw e;}
+   try{result=await askAI(a,b);break}catch(e){if(attempt===1||!/invalid recipe|sensible result/.test(e.message))throw e;}
   }
   recipes.set(k,result);items.set(result.word,result.emoji);persist();return result;
  })();
