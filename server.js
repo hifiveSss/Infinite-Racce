@@ -2,7 +2,7 @@ import express from 'express';
 import http from 'http';
 import {Server} from 'socket.io';
 import {randomInt, randomBytes} from 'node:crypto';
-import emojiKeywords from 'emojilib';
+import emojiKeywords from 'emojilib' with { type: 'json' };
 import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 app.use(express.static('public'));
