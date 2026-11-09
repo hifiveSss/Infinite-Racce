@@ -90,8 +90,8 @@ function ensureLocalAI(){
   if(data.type==='ready'){localAiReady=true;$('loadLocalAi').disabled=false;localStatus((data.label||'Local AI')+' ready • runs on your device');return}
   if(data.type==='loadError'){resetAI(data.message+' • If this persists, select CPU compatibility mode (Light).');return}
   if(data.id!==undefined&&localAiJobs.has(data.id)){
-   const job=localAiJobs.get(data.id);localAiJobs.delete(data.id);
-   if(data.type==='result')job.resolve({word:data.word,emoji:data.emoji});else if(data.type==='targetsResult')job.resolve(data.targets);else job.reject(Error(data.message||'AI failed'));
+   const job=localAiJobs.get(data.id);if(data.type!=='targetsProgress')localAiJobs.delete(data.id);
+   if(data.type==='targetsProgress'){job.onProgress?.(data.targets);return}if(data.type==='result')job.resolve({word:data.word,emoji:data.emoji});else if(data.type==='targetsResult')job.resolve(data.targets);else job.reject(Error(data.message||'AI failed'));
   }
  };
  localAiWorker.onerror=e=>{resetAI('AI worker crashed. Try CPU compatibility mode (Light) or update browser graphics drivers.');};
@@ -125,9 +125,9 @@ function curatedTargets(category,difficulty,count,excluded=[]){
  if(result.length<count)throw Error('Not enough distinct themed targets; try custom targets or a smaller board.');
  return result;
 }
-function localTargetList(category,difficulty,count){return new Promise((resolve,reject)=>{
+function localTargetList(category,difficulty,count,onProgress){return new Promise((resolve,reject)=>{
  let worker;try{worker=ensureLocalAI()}catch(e){reject(e);return}
- const id=++localAiSeq;localAiJobs.set(id,{resolve,reject});
+ const id=++localAiSeq;localAiJobs.set(id,{resolve,reject,onProgress});
  localStatus('Preparing '+count+' themed targets on your computer…');
  worker.postMessage({type:'targets',id,category,difficulty,count,preferredTier:aiTier(),backend:aiBackend()});
 })}
@@ -172,13 +172,22 @@ $('start').onclick=async()=>{
    if(needsTargets){
     const custom=isBingo?payload.custom.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean):[];
     const count=isBingo?Math.max(0,payload.size*payload.size-custom.length):1;
-    payload.preparedTargets=count?curatedTargets(payload.category,payload.difficulty,count,custom)||await localTargetList(payload.category,payload.difficulty,count):[];
+    let streamed=new Set(),progressQueue=Promise.resolve();
+    const streamWords=words=>{progressQueue=progressQueue.then(async()=>{
+      for(const word of words){
+        const key=String(word).toLowerCase();
+        if(streamed.has(key))continue;
+        streamed.add(key);
+        const progress=await emitCombine('preparationProgress',{words:[word]});
+        if(!progress?.ok)throw Error(progress?.error||'Could not share bingo targets');
+        if(isBingo)await delay(145);
+      }
+    });return progressQueue};
+    const curated=count?curatedTargets(payload.category,payload.difficulty,count,custom):[];
+    payload.preparedTargets=curated||(count?await localTargetList(payload.category,payload.difficulty,count,words=>streamWords(words)):[]);
     if(!Array.isArray(payload.preparedTargets)||payload.preparedTargets.length!==count)throw Error('Only '+(payload.preparedTargets?.length||0)+'/'+count+' themed targets were usable');
-    for(let i=0;i<payload.preparedTargets.length;i++){
-      const progress=await emitCombine('preparationProgress',{words:[payload.preparedTargets[i]]});
-      if(!progress?.ok)throw Error(progress?.error||'Could not share bingo targets');
-      if(isBingo)await delay(155);
-    }
+    await streamWords(payload.preparedTargets);
+    await progressQueue;
    }
    if(isBingo){
      // Make sure every visitor has time to see the last square before the round begins.
