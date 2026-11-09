@@ -212,7 +212,7 @@ async function makeTargets(category,difficulty,count,onProgress=()=>{}){
   if(seen.has(key))return;
   seen.add(key);names.push(cleaned);
  };
- const rounds=Math.min(20,Math.max(9,Math.ceil(count/3)+7));
+ const rounds=Math.min(7,Math.max(3,Math.ceil(count/7)+2)); // 3–6 local AI calls, then sourced candidates
  for(let attempt=0;attempt<rounds&&names.length<count;attempt++){
   const missing=count-names.length,ask=Math.min(6,missing+2);
   const samples=grounded.slice(0,14).join(' | ');
