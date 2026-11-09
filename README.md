@@ -1,26 +1,72 @@
-# Infinite Race — Bingo & Polish Update
+# Infinite Race — Battle & Crafting Update
 
-A Node.js and Socket.IO browser crafting game. Players **do not need to download anything**; deploy the site to a Node-compatible host (e.g. Render) and share its URL.
+Multiplayer browser crafting game with word racing, colored bingo and timed power battles. Built on Node.js, Express and Socket.IO.
 
-## Deploy
+## Deploy on Render (free-tier)
 
-1. Upload the contents of this `infinite-race` folder to your GitHub repository.
-2. On Render, create or update a **Web Service** with build command `npm install` and start command `npm start`.
-3. Add `GEMINI_API_KEY` in Render **Environment**. Never put the key in GitHub or HTML.
-4. Optional: `GEMINI_MODEL` defaults to `gemini-3.5-flash-lite` as used by your earlier version; change it if Google says your free-tier model is unavailable.
-5. Deploy and open the provided public URL. Free hosting and AI have quotas and may sleep or rate-limit.
+1. Upload the files inside this folder to your GitHub repository (keep `package.json` in the repository root).
+2. Create/update your Render **Web Service** with Build `npm install`, Start `npm start`, instance type Free.
+3. Optional: set `GEMINI_API_KEY` in the Render Environment to enable the Gemini model for combinations not covered by the offline recipes, custom theme target generation and battle judging. The default model setting is `gemini-3.5-flash-lite`. If Google changes availability, set `GEMINI_MODEL` to an available supported model.
+4. Visit the Render URL. Players do not need to download or install the game.
 
-To run locally for testing, install Node.js 18+ and run `npm install && npm start`, then open `http://localhost:3000`.
+Free Render instances sleep between visits; in-memory lobby state and player discoveries are not persistent across server restarts. Gemini free API quotas also apply. Do not put API secrets in GitHub or client-side code.
 
-## How to play
+## Controls
 
-- Click an item in the right bank to drop it in a random visible board position; drag a bank item onto the board or move existing pieces together to combine.
-- Drag empty space to pan. The connected starfield moves with the board. Scroll to zoom.
-- Elements flash while combinations are being generated, then pop and make sounds when placed. Mute via speaker.
-- Create a lobby, share its code, select **Find a word** or **Bingo**, then start. Each new round resets all players' word banks to Water, Fire, Wind, Earth.
-- Bingo supports 3x3, 4x4 and 5x5, with random targets or partial/full comma- or newline-separated custom lists. **First player to discover a square claims it**, permanently for that round. A full row, column or diagonal wins instantly. If all squares are claimed first, highest number of claimed squares wins; ties share the victory.
-- At the end everyone sees a victory screen with fanfare, scores and a waiting message. The host starts the next round from the lobby.
+- Click a sidebar item: places it near the center with a small random offset.
+- Drag from sidebar to a piece: combines immediately upon release.
+- Drag on canvas to move pieces and combine them; drop a piece over the right-hand sidebar to remove that *piece from the board*, not your discovered item.
+- Drag empty board to pan; mouse wheel zooms.
+- New discoveries are appended to the end of the item bank, after earlier items.
 
-## Notes
+## Modes
 
-AI requests still require internet and free-tier Gemini capacity. Repeated pairs use a cached recipe. Speed is constrained by Google's API and free server wake-up time. Race state and cache are currently stored in process/local files, so free hosting restarts can reset rooms and discoveries.
+- **Word race**: create a custom target or random target using Easy / Medium / Hard and optional theme.
+- **Bingo**: first player to claim a square owns it; player's color and name show on the square. A line wins. If every square is claimed without a line, highest score wins. Custom/AI/random boards support 3x3, 4x4, 5x5.
+- **Power battle**: host sets 15–900 seconds. Craft items and submit one fighter. At the deadline Gemini attempts a quick fantasy judgement of the submitted fighters, falling back to a consistent local power score if free AI is unavailable. Result includes animated fighters, effects, scores and a waiting screen.
+
+## Offline combinations
+
+There are **23,709 unique preconfigured offline pair mappings** in the initial version of this update (combining hand-written mappings and coherent rule-expanded thematic mappings, NOT a million individually curated AI answers). Reachability examples can be calculated with `offlinePathTo()` in `recipe-engine.js`.
+
+**Eternal Multiverse** is reachable from the four starters, with shortest sequential crafting depth 15 and 37 unique craft operations required along its dependency graph. These numbers refer to the current offline mapping and can change if recipes are adjusted.
+
+No AI is needed for a known offline pair. For unknown pairs, the server tries Gemini if configured and caches results. The offline map can give broad or repeating answers because thematic rules are not the same as individually curated combinations.
+
+## Caveats
+
+Requires a supported Gemini API key for real open-ended AI. AI service quotas, free-tier hosting limitations and model errors are outside the game server's control. Rooms live in memory and reset if the hosting instance sleeps/restarts. Tournament-style latency balancing and a persistent database are future improvements.
+
+## Browser-local AI edition (no API fees)
+
+This edition uses the preconfigured offline combinations first. For an unknown pair,
+`public/local-ai-worker.js` loads `onnx-community/Qwen3-1.7B-ONNX` or `onnx-community/Qwen3-0.6B-ONNX` using
+Transformers.js and generates a proposed word/emoji in the visitor's own browser.
+No `GEMINI_API_KEY` is required for word combinations.
+
+- Run or deploy as before using `npm install && npm start` (Render: Node web service).
+- Open the online website in recent Chrome or Edge with WebGPU enabled.
+- Click **Load local AI** to preload or simply combine an unknown pair to load on demand.
+- First visit **automatically downloads about 570 MB (Light) or 1.43 GB (Smart), plus extra model files** of model files from Hugging Face,
+  subject to the browser's cache and device capacity. This is not an application install.
+- The model runs on the visitor's device, not Render. Results are sent to the game
+  server so other visitors get the same cached pair result. Free hosting may lose its
+  recipe cache after a restart; configure durable storage for persistence.
+- The model is small and sometimes gives poor or invalid answers. The game rejects
+  obvious malformed outputs and allows retry for invalid output.
+- This model is not a live web search agent. The internet is used to serve the site,
+  download the AI library and model weights, and synchronize multiplayer recipes.
+- **Competitive integrity:** because the client generates unknown answers, a modified
+  client can send dishonest recipes and potentially cheat in races/bingo. Do not use
+  this implementation for prize-bearing or high-stakes competitions without a
+  trusted server-side recipe verifier.
+- WebGPU is required in this build; some browsers and low-end devices cannot run it.
+- The optional Gemini battle commentary and category target generation paths in
+  server.js remain optional and may require a Gemini key; normal crafting does not.
+
+
+## Smart local AI upgrade
+
+Select **Auto**, **Smart (Qwen3 1.7B)**, or **Light (Qwen3 0.6B)** at the top-left of the canvas. Auto selects Smart when `navigator.deviceMemory >= 8 GB`, otherwise Light. Both are 4-bit ONNX browser models using WebGPU. If Smart fails to load, the worker falls back to Light. Changing model restarts only the AI worker; it does not clear discoveries, crafting pieces, or multiplayer lobbies.
+
+The model weights are downloaded to each visitor's browser (not bundled inside the ZIP); Smart is around 1.43 GB and Light around 570 MB before auxiliary files. Actual performance, memory use, and first load time vary. Unknown combinations may still be imperfect. There is no paid API needed for crafting, but hosting and model availability depend on third-party free infrastructure.
