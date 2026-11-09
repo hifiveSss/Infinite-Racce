@@ -158,6 +158,15 @@ $('timeTab').onclick=()=>{currentTab='time';$('timeTab').classList.add('active')
 $('menuBtn').onclick=()=>{if(room)openModal();else if(confirm('Reset your entire solo discovery bank? This cannot be undone.'))socket.emit('reset')};$('helpBtn').onclick=()=>toast('Click a sidebar item to place it • drag items together to combine • drag empty space to pan • mouse wheel to zoom');
 const show=id=>$(id).classList.remove('hidden'),hide=id=>$(id).classList.add('hidden');function openModal(){show('overlay')};function closeModal(){hide('overlay')};$('raceBtn').onclick=openModal;$('racePill').onclick=openModal;$('closeModal').onclick=closeModal;$('overlay').addEventListener('pointerdown',e=>{if(e.target===$('overlay'))closeModal()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 function call(type,data){socket.emit(type,data,res=>{if(res&&!res.ok)toast(res.error)})}function sendName(){socket.emit('name',$('name').value.trim()||'Player')};$('create').onclick=()=>{sendName();call('create',{})};$('join').onclick=()=>{sendName();call('join',$('joinCode').value)};$('name').onchange=sendName;$('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('join').click()});const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function waitForSharedBoard(total){
+ const until=Date.now()+12000;
+ while(Date.now()<until){
+  if(!room||room.phase!=='preparing')throw Error('Board preparation was cancelled');
+  if(room.preview?.words?.length>=total)return;
+  await delay(75);
+ }
+ throw Error('The shared bingo board did not finish preparing. Please retry.');
+}
 $('start').onclick=async()=>{
  if($('start').disabled)return;
  const payload={mode:document.querySelector('input[name=raceMode]:checked').value,target:$('customTarget').value,size:Number($('bingoSize').value),custom:$('bingoCustom').value,category:$('category').value.trim(),difficulty:['easy','medium','hard'][Number($('difficulty').value)],duration:Number($('battleTime').value)};
@@ -183,6 +192,7 @@ $('start').onclick=async()=>{
         if(isBingo)await delay(145);
       }
     });return progressQueue};
+    if(isBingo&&custom.length)await delay(custom.length*135+160);
     const curated=count?curatedTargets(payload.category,payload.difficulty,count,custom):[];
     payload.preparedTargets=curated||(count?await localTargetList(payload.category,payload.difficulty,count,words=>streamWords(words)):[]);
     if(!Array.isArray(payload.preparedTargets)||payload.preparedTargets.length!==count)throw Error('Only '+(payload.preparedTargets?.length||0)+'/'+count+' themed targets were usable');
@@ -190,8 +200,9 @@ $('start').onclick=async()=>{
     await progressQueue;
    }
    if(isBingo){
-     // Make sure every visitor has time to see the last square before the round begins.
-     await delay(1100);
+     await waitForSharedBoard(payload.size*payload.size);
+     // Keep the complete board visible before anyone can move.
+     await delay(1200);
    }else await delay(500);
   }
   const response=await emitCombine('start',payload);
