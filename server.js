@@ -281,18 +281,68 @@ socket.on('start',async(data,cb)=>{const p=players.get(socket.id),room=rooms.get
 socket.on('submitBattle',(raw,cb)=>{const p=players.get(socket.id),room=rooms.get(p?.room);if(!room||room.mode!=='battle'||room.phase!=='racing')return ackError(cb,'No active battle');if(Date.now()>room.endsAt)return ackError(cb,'Time is up');const word=String(raw||'').trim();if(!p.bank.has(word)||base.includes(word))return ackError(cb,'Discover an item first');room.submissions[socket.id]=word;emitRoom(room);cb?.({ok:true})});
 async function commitCraft(p,room,round,crafted,cb){
 const {word:result,emoji:originalEmoji}=crafted;const emoji=originalEmoji&&originalEmoji!=='✨'?originalEmoji:appropriateEmoji(result);if(!players.has(socket.id)||players.get(socket.id)!==p)return ackError(cb,'Player disconnected');const current=rooms.get(p.room);if(room&&(current!==room||current.round!==round||current.phase!=='racing'))return ackError(cb,'The round changed while crafting. Try in the next race.');const fresh=!p.bank.has(result);p.bank.add(result);socket.emit('bank',[...p.bank]);io.emit('emoji',{word:result,emoji});cb?.({ok:true,result,emoji,fresh});if(!current)return;const winKey=normalize(result);if(current.mode==='word'&&winKey===normalize(current.target)){finish(current,[socket.id],`Discovered ${current.target}!`);return}if(current.mode==='battle'){emitRoom(current);return}if(current.mode==='bingo'){const index=current.board.findIndex((word,i)=>normalize(word)===winKey&&current.owners[i]===null);if(index!==-1){current.owners[index]=socket.id;io.to(current.code).emit('claim',{index,word:current.board[index],player:p.name,id:socket.id});const reason=checkBingo(current,socket.id);if(reason){finish(current,[socket.id],reason);return}if(current.owners.every(x=>x!==null)){const totals=scores(current),top=Math.max(...Object.values(totals));finish(current,Object.keys(totals).filter(id=>totals[id]===top),`Board filled — highest score: ${top}`);return}}}emitRoom(current) }
+
+/* Gemini-first crafting with shared cooldown and browser-local fallback.
+   Read stored/preconfigured recipes before spending any Gemini quota. */
+const geminiState={cooldownUntil:0,consecutiveLimits:0,active:0};
+const geminiPending=new Map();
+const pairIdentity=(a,b)=>[a.toLowerCase().trim(),b.toLowerCase().trim()].sort().join('|');
+function geminiErrorCooldown(message){
+ const m=String(message||'');
+ const rateLimited=/limit reached|429|quota|rate.?limit/i.test(m);
+ if(rateLimited){
+  geminiState.consecutiveLimits++;
+  const backoff=Math.min(60*60*1000,120000*Math.pow(2,Math.min(5,geminiState.consecutiveLimits-1)));
+  geminiState.cooldownUntil=Date.now()+backoff;
+  console.warn('Gemini free quota reached; local fallback for',Math.ceil(backoff/60000),'minutes');
+ }else{
+  // Brief circuit breaker when Google is unavailable or a model is misconfigured.
+  geminiState.cooldownUntil=Date.now()+(/invalid|not available|key|free tier/i.test(m)?15*60*1000:30*1000);
+  console.warn('Gemini unavailable; falling back to local AI:',m.slice(0,160));
+ }
+}
+async function tryGeminiCraft(a,b){
+ if(!process.env.GEMINI_API_KEY||Date.now()<geminiState.cooldownUntil)return null;
+ const key=pairIdentity(a,b);
+ if(geminiPending.has(key))return geminiPending.get(key);
+ // Do not stack unlimited paid/free remote calls in a crowded multiplayer lobby.
+ if(geminiState.active>=2)return null;
+ geminiState.active++;
+ const task=(async()=>{
+  try{
+   const crafted=await combine(a,b);
+   geminiState.consecutiveLimits=0;
+   geminiState.cooldownUntil=0;
+   return crafted;
+  }catch(error){
+   geminiErrorCooldown(error?.message);
+   return null;
+  }
+ })();
+ geminiPending.set(key,task);
+ try{return await task}finally{geminiPending.delete(key);geminiState.active--}
+}
 async function requestCraft(data,cb,localProposal=false){
  const p=players.get(socket.id);if(!p)return;
  const a=String(data?.a||'').slice(0,60),b=String(data?.b||'').slice(0,60);
  if(!p.bank.has(a)||!p.bank.has(b))return ackError(cb,'You must discover both ingredients first');
  const room=rooms.get(p.room),round=room?.round;
  if(room&&room.phase!=='racing')return ackError(cb,room.phase==='finished'?'Race finished. Wait for another race.':'Wait for the host to start');
+ // Shared recipes include built-in, earlier Gemini, and earlier local-AI discoveries.
  let crafted=knownCombination(a,b);
- if(!crafted){
-   if(!localProposal)return cb?.({ok:false,needsLocal:true});
+ if(!crafted&&!localProposal){
+   crafted=await tryGeminiCraft(a,b);
+   // Check again: another player may have created this exact recipe in the meantime.
+   crafted=knownCombination(a,b)||crafted;
+   if(!crafted)return cb?.({ok:false,needsLocal:true,reason:Date.now()<geminiState.cooldownUntil?'Gemini cooldown':'Gemini unavailable'});
+ }
+ if(!crafted&&localProposal){
    const now=Date.now(),limit=localLimits.get(socket.id)||{t:now,n:0};
-   if(now-limit.t>60_000){limit.t=now;limit.n=0}if(++limit.n>24)return ackError(cb,'Too many new recipes per minute');localLimits.set(socket.id,limit);
-   try{crafted=registerLocalCombination(a,b,data?.word,appropriateEmoji(data?.word))}catch(e){return ackError(cb,e.message)}
+   if(now-limit.t>60_000){limit.t=now;limit.n=0}
+   if(++limit.n>24)return ackError(cb,'Too many new recipes per minute');
+   localLimits.set(socket.id,limit);
+   try{crafted=registerLocalCombination(a,b,data?.word,appropriateEmoji(data?.word))}
+   catch(e){return ackError(cb,e.message)}
  }
  return commitCraft(p,room,round,crafted,cb);
 }

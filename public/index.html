@@ -87,8 +87,17 @@ function ensureLocalAI(){
  localAiWorker=new Worker('/local-ai-worker.js?v=smart-webllm-1',{type:'module'});
  localAiWorker.onmessage=e=>{const data=e.data||{};
   if(data.type==='status'){localStatus(data.message);return}
-  if(data.type==='ready'){localAiReady=true;$('loadLocalAi').disabled=false;localStatus((data.label||'Local AI')+' ready • runs on your device');return}
-  if(data.type==='loadError'){resetAI(data.message+' • If this persists, select CPU compatibility mode (Light).');return}
+  if(data.type==='ready'){
+   localAiReady=true;$('loadLocalAi').disabled=false;
+   localStatus((data.label||'Local AI')+' ready • runs on your device');
+   try{localStorage.setItem('infiniteRaceAiLoaded',JSON.stringify({quality:aiTier(),backend:aiBackend()}))}catch{}
+   return
+  }
+  if(data.type==='loadError'){
+   try{localStorage.removeItem('infiniteRaceAiLoaded')}catch{}
+   resetAI(data.message+' • You can switch to Light / CPU compatibility if needed.');
+   return
+  }
   if(data.id!==undefined&&localAiJobs.has(data.id)){
    const job=localAiJobs.get(data.id);if(data.type!=='targetsProgress')localAiJobs.delete(data.id);
    if(data.type==='targetsProgress'){job.onProgress?.(data.targets);return}if(data.type==='result')job.resolve({word:data.word,emoji:data.emoji});else if(data.type==='targetsResult')job.resolve(data.targets);else job.reject(Error(data.message||'AI failed'));
@@ -144,6 +153,7 @@ async function mix(a,b,x,y,consumed=[]){
  try{
   let res=await emitCombine('combine',{a,b});
   if(res?.needsLocal){
+   localStatus(res.reason==='Gemini cooldown'?'Gemini is cooling down • using your local AI':'Gemini unavailable • using your local AI');
    const generated=await localCombine(a,b);
    res=await emitCombine('localCombine',{a,b,...generated});
    if(res?.ok)localStatus('AI ready • new discovery saved');
@@ -257,5 +267,19 @@ function renderPreparation(r){
  $('prepProgressFill').style.width=(got/total*100)+'%';
 }
 socket.on('room',r=>{const old=room;room=r;renderPreparation(r);renderBingo();$('battlePanel').classList.toggle('hidden',!(r?.mode==='battle'&&r?.phase==='racing'));if(r?.mode==='battle'){$('battleStatus').textContent=r.submissions?.[socket.id]?'Submitted: '+r.submissions[socket.id]:'Submit your strongest discovery!'}$('lobbySetup').classList.toggle('hidden',!!r);$('roomDetails').classList.toggle('hidden',!r);$('racePill').classList.toggle('hidden',!r);$('raceBtn').textContent=r?'🏁 Lobby '+r.code:'🏁 Multiplayer Race';if(!r){hide('results');return}if(r.phase==='racing'&&(!old||old.phase!=='racing'||old.round!==r.round))hide('results');$('racePill').textContent=r.phase==='racing'?(r.mode==='bingo'?`▦ ${r.size}×${r.size} Bingo — ${r.owners.filter(Boolean).length}/${r.board.length}`:r.mode==='battle'?'⚔️ Power Battle':'🎯 '+r.target):r.phase==='finished'?'🏆 '+r.winner:'⏳ Waiting for players • '+r.code;$('code').textContent=r.code;$('status').textContent=r.phase==='waiting'?'Waiting for host to start':r.phase==='preparing'?'Preparing themed challenge…':r.phase==='racing'?'Race in progress!':'Race finished — waiting for the next round';$('target').textContent=r.mode==='bingo'&&r.phase!=='waiting'?`▦ ${r.size}×${r.size} Bingo`:r.mode==='battle'?'⚔️ Power Battle':(r.target?'🎯 '+r.target:'');$('hostControls').classList.toggle('hidden',r.host!==socket.id);$('start').textContent=r.phase==='finished'?'Start next race':'Start race';$('start').disabled=r.phase==='racing'||r.phase==='preparing';$('players').replaceChildren();for(const p of r.players.sort((a,b)=>r.mode==='bingo'?b.score-a.score:b.count-a.count)){let line=document.createElement('div');line.className='player';line.style.borderLeft=`5px solid ${p.color||'#aaa'}`;line.textContent=`${p.name}${p.id===r.host?' 👑':''} — ${r.mode==='bingo'?p.score+' squares':r.mode==='battle'?(r.submissions?.[p.id]?'Fighter ready':'Crafting...'):p.count+' discoveries'}`;$('players').append(line)}if(r.phase==='racing')closeModal()});
-setInterval(()=>{if(room?.mode==='battle'&&room.phase==='racing'){const seconds=Math.max(0,Math.ceil((room.endsAt-Date.now())/1000));$('battleTimer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')}},250);window.addEventListener('resize',drawStars);drawStars();applyView();renderBank();
+setInterval(()=>{if(room?.mode==='battle'&&room.phase==='racing'){const seconds=Math.max(0,Math.ceil((room.endsAt-Date.now())/1000));$('battleTimer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')}},250);
+// Automatically reload the player's previously successful browser AI configuration.
+// It is cached in browser storage; no install or model download is forced for new players.
+window.addEventListener('load',()=>{
+ try{
+  const saved=JSON.parse(localStorage.getItem('infiniteRaceAiLoaded')||'null');
+  if(!saved||!['auto','smart','light'].includes(saved.quality)||!['cpu','webgpu'].includes(saved.backend))return;
+  $('aiQuality').value=saved.quality;
+  $('aiBackend').value=saved.backend;
+  if(saved.quality==='smart'&&saved.backend==='cpu')return;
+  localStatus('Restoring your previously loaded AI…');
+  $('loadLocalAi').click();
+ }catch(error){console.warn('Could not restore saved AI settings:',error)}
+});
+window.addEventListener('resize',drawStars);drawStars();applyView();renderBank();
 </script></body></html>
