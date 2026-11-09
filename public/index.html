@@ -23,6 +23,7 @@
 #preparingBlock.provider-glow[data-ai="gemini"]{--ai-prep:#2d8bff}
 #preparingBlock.provider-glow[data-ai="local"]{--ai-prep:#28c364}
 #preparingBlock.provider-glow[data-ai="cached"]{--ai-prep:#858c96}
+#preparingBlock.provider-glow[data-ai="unavailable"]{--ai-prep:#858c96;animation:none}
 #preparingBlock.provider-glow .prepSquare:not(.revealed){border-color:var(--ai-prep)!important;box-shadow:0 0 9px var(--ai-prep)!important}
 @keyframes prepGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.06)}}
 .fusing{animation:craftFlash .66s ease-in-out infinite;z-index:9999!important;box-shadow:0 0 16px 5px #ffdd83!important;border-color:#ffc34d!important}@keyframes craftFlash{0%,100%{filter:brightness(1);scale:1;opacity:1}45%{filter:brightness(1.5);scale:1.22;opacity:.55}70%{filter:brightness(1.8);scale:1.12;opacity:1}}.piece.dragging{scale:1.055;transition:scale .10s}#bank .item:active{scale:.96}#sideHint{margin:10px 13px 0;border:1px solid #d1d1d1;border-radius:5px;text-align:center;font-size:13px;font-weight:600;padding:10px 5px}#sideFooter{border-top:1px solid #ddd;margin-top:auto}#tabs{height:34px;display:flex;align-items:stretch;gap:3px;padding-left:7px}.tab{background:#fff;border:1px solid #d0d0d0;border-bottom:none;border-radius:8px 8px 0 0;padding:7px 12px;font-size:12px;font-weight:600;margin-top:2px}.tab.active{background:#fafafa}#searchRow{border-top:1px solid #ddd;display:flex;align-items:center;height:40px;background:#fafafa;padding:0 9px;gap:8px}#searchRow span{font-size:21px;color:#aaa}#search{border:0;outline:0;background:transparent;font-size:14px;width:100%;min-width:0}#search::placeholder{color:#a0a0a0}
@@ -237,14 +238,8 @@ $('start').onclick=async()=>{
      let generated=[];
      if(count){
        const cloud=await emitCombine('generateCategory',{category:payload.category,difficulty:payload.difficulty,count});
-       if(cloud?.ok)generated=cloud.targets;
-       else {
-         const curated=curatedTargets(payload.category,payload.difficulty,count,custom);
-         const fallback=curated||await (async()=>{await emitCombine('preparationProvider',{source:'local'});return localTargetList(payload.category,payload.difficulty,count)})();
-         generated=fallback;
-         const approval=await emitCombine('approveLocalTargets',{targets:generated,source:curated?'cached':'local'});
-         if(!approval?.ok)throw Error(approval?.error||'Incomplete fallback board');
-       }
+       if(!cloud?.ok)throw Error(cloud?.error||'Groq and Gemini could not generate the entire board');
+       generated=cloud.targets;
      }
      if(!Array.isArray(generated)||generated.length!==count)throw Error('Got '+(generated?.length||0)+'/'+count+' targets. Refusing partial board.');
      payload.preparedTargets=generated;
@@ -294,7 +289,7 @@ function renderPreparation(r){
  const active=r?.phase==='preparing';
  $('preparingBlock').classList.toggle('hidden',!active);
  if(!active){$('preparingBlock').classList.remove('provider-glow');$('preparingBlock').removeAttribute('data-ai');previewKey='';previewShown=0;return}
- const p=r.preview||{mode:'word',size:3,total:1,words:[]};$('preparingBlock').classList.add('provider-glow');$('preparingBlock').dataset.ai=p.provider||'cached';
+ const p=r.preview||{mode:'word',size:3,total:1,words:[]};$('preparingBlock').classList.add('provider-glow');$('preparingBlock').dataset.ai=p.provider||'unavailable';
  const key=r.code+':'+r.round+':'+p.mode+':'+p.size;
  if(previewKey!==key){previewKey=key;previewShown=0;$('prepBoard').replaceChildren()}
  const n=p.mode==='bingo'?p.size:1,total=p.mode==='bingo'?n*n:1,words=p.words||[];
@@ -313,7 +308,7 @@ function renderPreparation(r){
  }
  previewShown=Math.max(previewShown,words.length);
  const got=Math.min(total,words.length);
- $('prepInfo').textContent=p.mode==='bingo'?(got===total?'Board ready! Starting soon…':(p.category?'Theme: '+p.category+' • ':'')+(got?'Revealing targets…':'Thinking with '+({groq:'Groq',gemini:'Gemini',local:'Local AI',cached:'saved recipes'}[p.provider]||'AI')+'…')):'Generating the race target…';
+ $('prepInfo').textContent=p.mode==='bingo'?(got===total?'Board ready! Starting soon…':(p.category?'Theme: '+p.category+' • ':'')+(got?'Revealing targets…':'Thinking with '+({groq:'Groq',gemini:'Gemini',local:'Local AI',cached:'saved recipes',unavailable:'cloud AI (unavailable)'}[p.provider]||'cloud AI')+'…')):'Generating the race target…';
  $('prepCount').textContent=got+' / '+total+' squares ready';
  $('prepProgressFill').style.width=(got/total*100)+'%';
 }

@@ -232,6 +232,7 @@ if(process.env.GEMINI_API_KEY&&entries.filter(x=>x.score>0).length>1){try{const 
 if(room.round!==round||room.phase!=='racing')return;room.battle={entries,narration};const top=entries[0];finish(room,top?.score?[top.id]:[],top?.score?narration:'Nobody submitted an item!')}
 
 const categoryCache=new Map();
+const categoryErrors={groq:'not attempted',gemini:'not attempted'};
 function verifiedTargets(raw,category,count,excluded=[]){
  if(!Array.isArray(raw)||raw.length!==count)return null;
  let out;try{out=parseTargets(raw)}catch{return null}
@@ -242,7 +243,8 @@ function verifiedTargets(raw,category,count,excluded=[]){
  return out;
 }
 async function groqBoard(category,difficulty,count,excluded,setProvider){
- if(!process.env.GROQ_API_KEY||Date.now()<groqState.until)return null;
+ if(!process.env.GROQ_API_KEY){categoryErrors.groq='GROQ_API_KEY missing in Render';return null}
+ if(Date.now()<groqState.until){categoryErrors.groq='rate-limited or unavailable, cooldown active';return null}
  setProvider('groq');
  let refs='';
  try{
@@ -269,9 +271,11 @@ async function groqBoard(category,difficulty,count,excluded,setProvider){
    }
    const data=await response.json(),raw=JSON.parse(data.choices?.[0]?.message?.content||'{}');
    const names=verifiedTargets(raw.targets,category,count,excluded);
-   if(names){groqState.failures=0;groqState.until=0;return names}
-   console.warn('Groq bingo count/validity failed: expected',count,'received',raw.targets?.length);
+   if(names){groqState.failures=0;groqState.until=0;categoryErrors.groq='ready';return names}
+   categoryErrors.groq='invalid target count or duplicates ('+(raw.targets?.length??'unknown')+'/'+count+')';
+   console.warn('Groq bingo',categoryErrors.groq);
   }catch(error){
+   categoryErrors.groq='request failed ('+(error.status||String(error.message).slice(0,90))+')';
    console.warn('Groq bingo attempt failed:',String(error.message).slice(0,130));
    if([400,401,403,404,429].includes(error.status)){
     const limited=error.status===429;
@@ -284,7 +288,8 @@ async function groqBoard(category,difficulty,count,excluded,setProvider){
  return null;
 }
 async function geminiBoard(category,difficulty,count,excluded,setProvider){
- if(!process.env.GEMINI_API_KEY||Date.now()<geminiState.cooldownUntil)return null;
+ if(!process.env.GEMINI_API_KEY){categoryErrors.gemini='GEMINI_API_KEY missing in Render';return null}
+ if(Date.now()<geminiState.cooldownUntil){categoryErrors.gemini='rate-limited or unavailable, cooldown active';return null}
  setProvider('gemini');
  const prompt='Create themed Infinite Craft bingo targets for the EXACT subject '+JSON.stringify(category)+'. Difficulty '+difficulty+'. Return EXACTLY '+count+' DISTINCT real named relevant short craftable entities from this exact subject. Exclude '+JSON.stringify(excluded)+'. No generic words, fictional inventions, made-up brands, or wrong franchises. PAYDAY 3 is the heist video game, not wages. Respond ONLY JSON {"targets":[...]} with EXACTLY '+count+' strings.';
  for(let attempt=0;attempt<2;attempt++){
@@ -298,8 +303,9 @@ async function geminiBoard(category,difficulty,count,excluded,setProvider){
    if(!response.ok){const err=new Error('Gemini HTTP '+response.status);err.status=response.status;throw err}
    const result=await response.json(),raw=result.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'{}';
    const names=verifiedTargets(JSON.parse(raw).targets,category,count,excluded);
-   if(names)return names;
+   if(names){categoryErrors.gemini='ready';return names}categoryErrors.gemini='invalid target count or duplicates';
   }catch(err){
+   categoryErrors.gemini='request failed ('+(err.status||String(err.message).slice(0,90))+')';
    console.warn('Gemini bingo attempt failed:',String(err.message).slice(0,130));
    if([401,403,404,429].includes(err.status)){
     const limited=err.status===429;
@@ -327,17 +333,17 @@ socket.on('generateCategory',async(data,cb)=>{
  if(required<0||required>25||data?.count!==required)return ackError(cb,'Wrong target count; expected '+required);
  if(required===0){preview.approved=[];return cb?.({ok:true,targets:[],source:'cached'})}
  const setProvider=source=>{if(room.phase==='preparing'&&room.preview===preview){preview.provider=source;emitRoom(room)}};
- const excluded=preview.custom||[],cacheKey=JSON.stringify([category.toLowerCase(),difficulty,required,excluded.map(normalize).sort()]);
- const prior=categoryCache.get(cacheKey);
- if(prior&&Date.now()-prior.when<3600000){preview.approved=prior.targets;setProvider('cached');return cb?.({ok:true,targets:prior.targets,source:'cached'})}
+ const excluded=preview.custom||[];
+ categoryErrors.groq='not attempted';categoryErrors.gemini='not attempted';
  let names=await groqBoard(category,difficulty,required,excluded,setProvider),source='groq';
  if(room.phase!=='preparing'||room.preview!==preview)return ackError(cb,'Preparation cancelled');
  if(!names){names=await geminiBoard(category,difficulty,required,excluded,setProvider);source='gemini'}
  if(room.phase!=='preparing'||room.preview!==preview)return ackError(cb,'Preparation cancelled');
- if(!names)return cb?.({ok:false,needsLocal:true,error:'Cloud category generation failed or returned an incomplete board'});
+ if(!names){
+  preview.provider='unavailable';emitRoom(room);
+  return cb?.({ok:false,error:'Could not generate all '+required+' category targets. Groq: '+categoryErrors.groq+'; Gemini: '+categoryErrors.gemini+'. No local AI or saved-recipe fallback was used.'});
+ }
  preview.approved=names;preview.provider=source;emitRoom(room);
- categoryCache.set(cacheKey,{when:Date.now(),targets:names});
- if(categoryCache.size>80)categoryCache.delete(categoryCache.keys().next().value);
  cb?.({ok:true,targets:names,source});
 });
 socket.on('approveLocalTargets',(data,cb)=>{
@@ -369,7 +375,7 @@ socket.on('prepareStart',(data,cb)=>{
   }
  }catch(e){return ackError(cb,e.message)}
  room.phase='preparing';
- room.preview={mode,size,words:[],total:mode==='bingo'?size*size:1,category:String(data?.category||'').slice(0,45),custom,provider:'cached',approved:null};
+ room.preview={mode,size,words:[],total:mode==='bingo'?size*size:1,category:String(data?.category||'').slice(0,45),custom,provider:String(data?.category||'').trim()?(process.env.GROQ_API_KEY&&Date.now()>=groqState.until?'groq':process.env.GEMINI_API_KEY&&Date.now()>=geminiState.cooldownUntil?'gemini':'unavailable'):'cached',approved:null};
  emitRoom(room);
  cb?.({ok:true,board});
 });
