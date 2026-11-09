@@ -36,6 +36,26 @@ async function researchTopic(topic){
  if(topicResearchCache.size>120)topicResearchCache.delete(topicResearchCache.keys().next().value);
  return data;
 }
+/* Lightweight factual hints for unfamiliar ingredient names.
+   Deliberately limited to two short Wikipedia searches per pair. */
+const craftResearchCache=new Map();
+app.get('/api/craft-research',async(req,res)=>{
+ const terms=[req.query.a,req.query.b].map(v=>String(v||'').replace(/[^a-zA-Z0-9 '\-]/g,' ').trim().slice(0,55));
+ if(terms.some(v=>v.length<2))return res.json({hints:[]});
+ const key=terms.map(v=>v.toLowerCase()).sort().join('|'),prior=craftResearchCache.get(key);
+ if(prior&&Date.now()-prior.at<1800000)return res.json({hints:prior.hints});
+ const replies=await Promise.allSettled(terms.map(async term=>{
+  const params=new URLSearchParams({action:'query',list:'search',srsearch:term,srlimit:'2',srprop:'snippet',format:'json',origin:'*'});
+  const response=await fetch('https://en.wikipedia.org/w/api.php?'+params,{signal:AbortSignal.timeout(4000),headers:{'User-Agent':'InfiniteRace/1.0 (word-combination research)'}});
+  if(!response.ok)return [];
+  const json=await response.json();
+  return (json.query?.search||[]).map(d=>({term,title:String(d.title||'').slice(0,65),description:cleanWiki(d.snippet).slice(0,160)}));
+ }));
+ const hints=replies.flatMap(r=>r.status==='fulfilled'?r.value:[]).slice(0,4);
+ craftResearchCache.set(key,{at:Date.now(),hints});
+ if(craftResearchCache.size>300)craftResearchCache.delete(craftResearchCache.keys().next().value);
+ res.json({hints,source:'Wikipedia'});
+});
 app.get('/api/topic-research',async(req,res)=>{
  try{
   const topic=String(req.query.topic||'').slice(0,70);
