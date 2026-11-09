@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import {Server} from 'socket.io';
 import {randomInt, randomBytes} from 'node:crypto';
+import emojiKeywords from 'emojilib';
 import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 app.use(express.static('public'));
@@ -94,6 +95,62 @@ app.get('/api/craft-research',async(req,res)=>{
  if(craftResearchCache.size>200)craftResearchCache.delete(craftResearchCache.keys().next().value);
  res.json(data);
 });
+
+/* Choose Unicode emoji from a searchable, real emoji keyword catalog.
+   The model generates the *word*; this independent resolver assigns its icon,
+   avoiding the broken ✨ fallback on every new discovery. */
+const emojiOverrides=[
+ [/\b(steam|vapour|vapor|smoke|fog)\b/i,'💨'],
+ [/\b(volcano|eruption|lava)\b/i,'🌋'],
+ [/\b(dinosaur|raptor|trex|t rex)\b/i,'🦖'],
+ [/\b(dragon)\b/i,'🐉'],
+ [/\b(robot|android|cyborg|droid)\b/i,'🤖'],
+ [/\b(hacker|cyberdeck|code|software|programming)\b/i,'💻'],
+ [/\b(star wars|lightsaber|jedi|sith)\b/i,'⚔️'],
+ [/\b(payday|heist|robbery|bank robber)\b/i,'💰'],
+ [/\b(fortnite|battle royale)\b/i,'🎮'],
+ [/\b(minecraft)\b/i,'⛏️'],
+ [/\b(black hole|galaxy|universe|multiverse|nebula)\b/i,'🌌'],
+ [/\b(rocket|spaceship|spacecraft)\b/i,'🚀'],
+ [/\b(planet|earth)\b/i,'🌍'],
+ [/\b(sun|sunshine|solar)\b/i,'☀️'],
+ [/\b(moon|lunar)\b/i,'🌙'],
+ [/\b(electric|electricity|lightning|thunder)\b/i,'⚡'],
+ [/\b(ice|frozen|snow)\b/i,'❄️'],
+ [/\b(water|lake|ocean|river|sea)\b/i,'💧'],
+ [/\b(flame|fire|burn)\b/i,'🔥'],
+ [/\b(tree|forest|woodland)\b/i,'🌳'],
+ [/\b(mountain)\b/i,'🏔️'],
+ [/\b(bomb|explosion|dynamite)\b/i,'💣'],
+ [/\b(gun|rifle|sniper|pistol)\b/i,'🔫'],
+ [/\b(sword|knife|blade)\b/i,'🗡️'],
+ [/\b(king|emperor|queen|royalty)\b/i,'👑'],
+ [/\b(castle|fortress|palace)\b/i,'🏰'],
+ [/\b(bank|money|wealth|cash)\b/i,'💰'],
+ [/\b(battle|war|fight|combat)\b/i,'⚔️'],
+ [/\b(computer|laptop|desktop|internet)\b/i,'💻'],
+ [/\b(phone|smartphone)\b/i,'📱'],
+ [/\b(machine|engine|mechanism)\b/i,'⚙️'],
+ [/\b(time|clock|chrono)\b/i,'⏳'],
+ [/\b(magic|wizard|spell)\b/i,'🪄']
+];
+const usableEmoji=Object.entries(emojiKeywords).filter(([symbol,keys])=>Array.isArray(keys)&&keys.length&&symbol.length<=7&&!/\u200d|\ud83c[\udffb-\udfff]/u.test(symbol)).map(([symbol,keys])=>[symbol,keys.map(k=>String(k).replace(/_/g,' ').toLowerCase())]);
+function appropriateEmoji(word){
+ const name=String(word||'').trim().toLowerCase();
+ for(const [re,symbol] of emojiOverrides)if(re.test(name))return symbol;
+ const words=name.replace(/[^a-z0-9]+/g,' ').split(/\s+/).filter(w=>w.length>2);
+ let best='',score=0;
+ for(const [symbol,keywords] of usableEmoji){
+  let local=0;
+  for(const key of keywords){
+   if(key===name)local=Math.max(local,30+key.length);
+   else if(key.length>3&&name.includes(key))local=Math.max(local,7+key.length/4);
+   else if(key.length>3&&words.includes(key))local=Math.max(local,5+key.length/4);
+  }
+  if(local>score){score=local;best=symbol}
+ }
+ return score>=5?best:'🧩';
+}
 const rooms=new Map(),players=new Map();
 const localLimits=new Map();
 const targets=['Spaceship','Dragon','Black Hole','Computer','Volcano','Robot','Pizza','Time Machine','Unicorn','Galaxy','Electricity','Internet','Dinosaur','Castle','Music','Moon','Supernova','Chocolate','Pirate','Laser','Video Game'];
@@ -236,7 +293,7 @@ async function requestCraft(data,cb,localProposal=false){
    if(!localProposal)return cb?.({ok:false,needsLocal:true});
    const now=Date.now(),limit=localLimits.get(socket.id)||{t:now,n:0};
    if(now-limit.t>60_000){limit.t=now;limit.n=0}if(++limit.n>24)return ackError(cb,'Too many new recipes per minute');localLimits.set(socket.id,limit);
-   try{crafted=registerLocalCombination(a,b,data?.word,data?.emoji)}catch(e){return ackError(cb,e.message)}
+   try{crafted=registerLocalCombination(a,b,data?.word,appropriateEmoji(data?.word))}catch(e){return ackError(cb,e.message)}
  }
  return commitCraft(p,room,round,crafted,cb);
 }
