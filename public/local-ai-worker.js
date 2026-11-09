@@ -1,10 +1,10 @@
 // Runs entirely in the visitor's browser, behind a WebGPU worker.
-// Smart model for capable devices, light model as a resource fallback.
+// Verified Qwen2.5 instruct models; explicit tier selection is never silently downgraded.
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 env.allowLocalModels = false;
 const MODELS = {
-  smart: {id:'onnx-community/Qwen3-1.7B-ONNX', dtype:'q4f16', label:'Smart · Qwen3 1.7B'},
-  light: {id:'onnx-community/Qwen3-0.6B-ONNX', dtype:'q4', label:'Light · Qwen3 0.6B'},
+  smart: {id:'onnx-community/Qwen2.5-1.5B-Instruct', dtype:'q4f16', label:'Smart · Qwen2.5 1.5B'},
+  light: {id:'onnx-community/Qwen2.5-0.5B-Instruct', dtype:'q4f16', label:'Light · Qwen2.5 0.5B'},
 };
 let generator = null, activeTier = null, loadingPromise = null;
 let tier = 'smart';
@@ -14,14 +14,17 @@ async function load(){
   if(generator) return generator;
   if(loadingPromise) return loadingPromise;
   loadingPromise=(async()=>{
-    const order=tier==='smart' ? ['smart','light'] : ['light'];
+    const order=[tier];
     let lastError;
     for(const choice of order){
       const model=MODELS[choice];
       try {
         send({type:'status',message:`Loading ${model.label} (first visit downloads model files)…`});
+        const adapter=await navigator.gpu?.requestAdapter();
+        if(!adapter)throw Error('No compatible WebGPU adapter. Enable hardware acceleration and reload in Chrome or Edge.');
+        const fp16=adapter.features.has('shader-f16');
         const pipe=await pipeline('text-generation', model.id, {
-          device:'webgpu',dtype:model.dtype,
+          device:'webgpu',dtype:fp16?model.dtype:'q4',
           progress_callback:info=>{
             if(info.status==='progress'&&Number.isFinite(info.progress))
               send({type:'status',message:`${model.label}: ${Math.round(info.progress)}% downloaded`});
@@ -32,7 +35,7 @@ async function load(){
         return pipe;
       }catch(err){
         lastError=err;
-        send({type:'status',message:`${model.label} unavailable: ${formatErr(err)}${choice==='smart'?' — trying light AI…':''}`});
+        send({type:'status',message:`${model.label} unavailable: ${formatErr(err)} — select another model or try Chrome/Edge after restarting your browser`});
       }
     }
     throw new Error('Could not load a browser model: '+formatErr(lastError));
@@ -66,11 +69,11 @@ async function combine(a,b){
   const model=await load();
   const prompt=[
     {role:'system',content:'You are an expert Infinite Craft-style combination engine. For two concepts, invent ONE satisfying, recognizable noun, proper name, invention or natural phenomenon that connects BOTH ideas. Favor physical reactions, causality, shared attributes, cultural references, then clever associations. Be creative but intuitive. NEVER copy or concatenate ingredient names. No explanations, no thinking. Output strictly compact JSON {"word":"Steam","emoji":"💨"}. Use one appropriate Unicode emoji.'},
-    {role:'user',content:'Water + Fire /no_think'},
+    {role:'user',content:'Water + Fire'},
     {role:'assistant',content:'{"word":"Steam","emoji":"💨"}'},
-    {role:'user',content:'Book + Electricity /no_think'},
+    {role:'user',content:'Book + Electricity'},
     {role:'assistant',content:'{"word":"E-reader","emoji":"📱"}'},
-    {role:'user',content:`${a} + ${b} /no_think`},
+    {role:'user',content:`${a} + ${b}`},
   ];
   let last;
   for(let attempt=0;attempt<2;attempt++){
@@ -80,6 +83,20 @@ async function combine(a,b){
   throw last;
 }
 // Serialize operations so two simultaneous crafts don't compete for GPU memory.
+async function makeTargets(category,difficulty,count){
+ const model=await load();
+ const sample=[
+  {role:'system',content:'Generate diverse real recognizable concepts for a crafting-game challenge. They must be directly related to the requested theme, and avoid generic filler. Reply ONLY a JSON array of short nouns or noun phrases. No explanations.'},
+  {role:'user',content:`Give ${count} DISTINCT ${difficulty} difficulty crafting targets for the theme: ${category}. Easy: common tangible things, medium: recognizable inventions/creatures/places, hard: specialised ideas. JSON array only.`}
+ ];
+ const out=await model(sample,{max_new_tokens:Math.min(750,Math.max(180,count*25)),do_sample:false});
+ const txt=generatedText(out),match=txt.match(/\[[\s\S]*?\]/);
+ if(!match)throw Error('AI did not return a themed target list. Try again.');
+ const arr=JSON.parse(match[0]);
+ const cleaned=[...new Set(arr.map(x=>String(x).trim()).filter(x=>x.length>1&&x.length<=48&&/^[\p{L}\p{N}][\p{L}\p{N} '\-]*$/u.test(x)&&!['water','fire','wind','earth'].includes(x.toLowerCase())))];
+ if(cleaned.length<count)throw Error(`AI only prepared ${cleaned.length}/${count} usable targets. Retry or use custom targets.`);
+ return cleaned.slice(0,count);
+}
 let queue=Promise.resolve();
 self.onmessage=e=>{
   const {type,id,a,b,preferredTier}=e.data||{};
@@ -88,11 +105,12 @@ self.onmessage=e=>{
     queue=queue.then(()=>load()).catch(err=>send({type:'status',message:formatErr(err)}));
     return;
   }
-  if(type!=='combine')return;
+  if(type!=='combine' && type!=='targets')return;
   if(preferredTier==='light'||preferredTier==='smart')tier=preferredTier;
   queue=queue.then(async()=>{
     try{send({type:'status',message:generator?`Crafting with ${MODELS[activeTier].label}…`:'Preparing local AI…'});
-      send({type:'result',id,...await combine(String(a||''),String(b||''))});
+      if(type==='targets')send({type:'targetsResult',id,targets:await makeTargets(String(e.data.category||'').slice(0,45),String(e.data.difficulty||'medium'),Math.min(25,Math.max(1,Number(e.data.count)||1)))});
+      else send({type:'result',id,...await combine(String(a||''),String(b||''))});
     }catch(err){send({type:'error',id,message:formatErr(err)})}
   });
 };

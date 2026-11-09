@@ -70,3 +70,14 @@ No `GEMINI_API_KEY` is required for word combinations.
 Select **Auto**, **Smart (Qwen3 1.7B)**, or **Light (Qwen3 0.6B)** at the top-left of the canvas. Auto selects Smart when `navigator.deviceMemory >= 8 GB`, otherwise Light. Both are 4-bit ONNX browser models using WebGPU. If Smart fails to load, the worker falls back to Light. Changing model restarts only the AI worker; it does not clear discoveries, crafting pieces, or multiplayer lobbies.
 
 The model weights are downloaded to each visitor's browser (not bundled inside the ZIP); Smart is around 1.43 GB and Light around 570 MB before auxiliary files. Actual performance, memory use, and first load time vary. Unknown combinations may still be imperfect. There is no paid API needed for crafting, but hosting and model availability depend on third-party free infrastructure.
+
+
+## Local AI stability update (Nov 9)
+
+- Smart: `onnx-community/Qwen2.5-1.5B-Instruct`; Light: `onnx-community/Qwen2.5-0.5B-Instruct`.
+- Both use WebGPU 4-bit quantization, selecting q4 when the GPU lacks shader-f16.
+- Manually choosing Smart does not silently fall back to Light; errors are reported.
+- Theme generation happens on the lobby host's local AI before the race, with a preparation overlay for all players; failures cancel preparation.
+- Browser WebGPU, video-memory, model CDN access and the first model download remain hardware/network prerequisites.
+- Models are loaded from Hugging Face; no user install or paid API key is required.
+- Live model inference was NOT tested in this environment.
