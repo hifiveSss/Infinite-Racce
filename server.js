@@ -89,7 +89,12 @@ app.get('/api/craft-research',async(req,res)=>{
  if(prior&&Date.now()-prior.at<1800000)return res.json(prior.data);
  const queries=[...terms,terms[0]+' '+terms[1]];
  const lookups=await Promise.allSettled(queries.map(multiSearch));
- const pages=uniquePages(lookups.flatMap(r=>r.status==='fulfilled'?r.value:[]),12);
+ // Interleave both ingredient searches and the combined search, so a popular
+ // first ingredient cannot drown out the second ingredient's context.
+ const groups=lookups.map(r=>r.status==='fulfilled'?r.value:[]);
+ const blended=[];
+ for(let i=0;i<12;i++)for(const group of groups)if(group[i])blended.push(group[i]);
+ const pages=uniquePages(blended,12);
  const data={hints:pages.map(p=>({title:p.title,description:p.description,source:p.source})),sources:[...new Set(pages.map(p=>p.source))]};
  craftResearchCache.set(key,{at:Date.now(),data});
  if(craftResearchCache.size>200)craftResearchCache.delete(craftResearchCache.keys().next().value);
