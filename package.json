@@ -1,1 +1,16 @@
-{"name":"infinite-race","version":"1.0.0","type":"module","scripts":{"start":"node server.js"},"dependencies":{"express":"^4.21.2","socket.io":"^4.8.1"},"engines":{"node":">=18"}}
+{
+  "name": "infinite-race",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "emojilib": "^4.0.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
