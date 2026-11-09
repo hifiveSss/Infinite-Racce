@@ -231,6 +231,7 @@ async function resolveBattle(room,round){if(rooms.get(room.code)!==room||room.ro
 if(process.env.GEMINI_API_KEY&&entries.filter(x=>x.score>0).length>1){try{const model=process.env.GEMINI_MODEL||'gemini-3.5-flash-lite';const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:AbortSignal.timeout(5500),headers:{'Content-Type':'application/json','x-goog-api-key':process.env.GEMINI_API_KEY},body:JSON.stringify({contents:[{parts:[{text:`You referee a playful fantasy battle. Decide which of these items would be most powerful in a battle, using coherent fictional reasoning, without favouring complicated names: ${JSON.stringify(entries.map(x=>({id:x.id,word:x.word})))}. Reply JSON only {"winnerId":"exact id","narration":"one exciting sentence"}.` }]}],generationConfig:{responseMimeType:'application/json',maxOutputTokens:120,temperature:.35}})});if(response.ok){const j=await response.json(),v=JSON.parse(j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'{}');const chosen=entries.find(e=>e.id===v.winnerId&&e.score>0);if(chosen){entries.sort((a,b)=>a===chosen?-1:b===chosen?1:b.score-a.score);narration=String(v.narration||narration).slice(0,220)}}}catch{}}
 if(room.round!==round||room.phase!=='racing')return;room.battle={entries,narration};const top=entries[0];finish(room,top?.score?[top.id]:[],top?.score?narration:'Nobody submitted an item!')}
 
+const groqState={until:0,failures:0},geminiState={cooldownUntil:0,consecutiveLimits:0,active:0};
 const categoryCache=new Map();
 const categoryErrors={groq:'not attempted',gemini:'not attempted'};
 function verifiedTargets(raw,category,count,excluded=[]){
@@ -324,6 +325,7 @@ socket.on('join',(raw,cb)=>{const code=String(raw||'').trim().toUpperCase(),room
 socket.on('leave',()=>{leave(socket);socket.emit('room',null)});
 
 socket.on('generateCategory',async(data,cb)=>{
+ try{
  const player=players.get(socket.id),room=rooms.get(player?.room);
  if(!room||room.host!==socket.id||room.phase!=='preparing'||!room.preview)return ackError(cb,'No active host preparation');
  const preview=room.preview,category=String(data?.category||'').trim().slice(0,45);
@@ -345,6 +347,12 @@ socket.on('generateCategory',async(data,cb)=>{
  }
  preview.approved=names;preview.provider=source;emitRoom(room);
  cb?.({ok:true,targets:names,source});
+ }catch(error){
+  console.error('Category generation failed:',error);
+  const player=players.get(socket.id),room=rooms.get(player?.room);
+  if(room?.phase==='preparing'&&room.host===socket.id&&room.preview){room.preview.provider='unavailable';emitRoom(room)}
+  cb?.({ok:false,error:'Category generation failed: '+String(error?.message||'Unexpected server error').slice(0,170)});
+ }
 });
 socket.on('approveLocalTargets',(data,cb)=>{
  const player=players.get(socket.id),room=rooms.get(player?.room);
@@ -411,7 +419,7 @@ async function commitCraft(p,room,round,crafted,cb,source='cached'){
 const {word:result,emoji:originalEmoji}=crafted;const emoji=originalEmoji&&originalEmoji!=='✨'?originalEmoji:appropriateEmoji(result);if(!players.has(socket.id)||players.get(socket.id)!==p)return ackError(cb,'Player disconnected');const current=rooms.get(p.room);if(room&&(current!==room||current.round!==round||current.phase!=='racing'))return ackError(cb,'The round changed while crafting. Try in the next race.');const fresh=!p.bank.has(result);p.bank.add(result);socket.emit('bank',[...p.bank]);io.emit('emoji',{word:result,emoji});cb?.({ok:true,result,emoji,fresh,source});if(!current)return;const winKey=normalize(result);if(current.mode==='word'&&winKey===normalize(current.target)){finish(current,[socket.id],`Discovered ${current.target}!`);return}if(current.mode==='battle'){emitRoom(current);return}if(current.mode==='bingo'){const index=current.board.findIndex((word,i)=>normalize(word)===winKey&&current.owners[i]===null);if(index!==-1){current.owners[index]=socket.id;io.to(current.code).emit('claim',{index,word:current.board[index],player:p.name,id:socket.id});const reason=checkBingo(current,socket.id);if(reason){finish(current,[socket.id],reason);return}if(current.owners.every(x=>x!==null)){const totals=scores(current),top=Math.max(...Object.values(totals));finish(current,Object.keys(totals).filter(id=>totals[id]===top),`Board filled — highest score: ${top}`);return}}}emitRoom(current) }
 
 
-const groqState={until:0,failures:0},geminiState={cooldownUntil:0,consecutiveLimits:0,active:0};
+
 const pendingCloud=new Map(),researchCachePair=new Map();
 const pairIdentity=(a,b)=>[String(a).toLowerCase(),String(b).toLowerCase()].sort().join('|');
 function acceptableResult(word,a,b){
