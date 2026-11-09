@@ -7,7 +7,9 @@ import {readFileSync} from 'node:fs';
 // Load the installed JSON as data without going through ESM package importing.
 const emojiKeywords=JSON.parse(readFileSync(new URL('./node_modules/emojilib/dist/emoji-en-US.json',import.meta.url),'utf8'));
 import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
+import {attachBluffClub} from './bluff-club.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
+attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:Boolean(process.env.GEMINI_API_KEY||process.env.GROQ_API_KEY),groqConfigured:Boolean(process.env.GROQ_API_KEY),...recipeStats()}));
 
