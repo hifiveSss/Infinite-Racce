@@ -2,7 +2,10 @@ import express from 'express';
 import http from 'http';
 import {Server} from 'socket.io';
 import {randomInt, randomBytes} from 'node:crypto';
-import emojiKeywords from 'emojilib' with { type: 'json' };
+import {readFileSync} from 'node:fs';
+// emojilib's JSON entrypoint triggers Node's import-attribute error on Render.
+// Load the installed JSON as data without going through ESM package importing.
+const emojiKeywords=JSON.parse(readFileSync(new URL('./node_modules/emojilib/dist/emoji-en-US.json',import.meta.url),'utf8'));
 import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 app.use(express.static('public'));
