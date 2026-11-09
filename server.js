@@ -248,14 +248,17 @@ const battleWords=[['universe',100],['multiverse',110],['black hole',98],['super
 function power(word){const w=normalize(word);let score=15;for(const [term,val] of battleWords)if(w.includes(term))score=Math.max(score,val);for(const t of ['quantum','cosmic','immortal','galactic','apocalypse','infinite','ultimate'])if(w.includes(t))score+=8;score+=Math.min(15,Math.round(word.length/4));return Math.min(score,145)}
 
 function buildTournament(entries){
- const original=entries.slice();
- // Mix initial pairings rather than always giving the strongest item an easy opener.
- for(let i=original.length-1;i>0;i--){const j=randomInt(i+1);[original[i],original[j]]=[original[j],original[i]]}
- let contestants=original,rounds=[];
+ const shuffled=entries.slice();
+ for(let i=shuffled.length-1;i>0;i--){const j=randomInt(i+1);[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
+ const size=2**Math.max(1,Math.ceil(Math.log2(Math.max(2,shuffled.length))));
+ const slots=Array(size).fill(null),firstPass=size/2;
+ for(let i=0;i<shuffled.length;i++)slots[i<firstPass?2*i:2*(i-firstPass)+1]=shuffled[i];
+ let contestants=slots,rounds=[];
  while(contestants.length>1){
   const games=[],next=[];
   for(let i=0;i<contestants.length;i+=2){
-   const a=contestants[i],b=contestants[i+1]||null;
+   const a=contestants[i],b=contestants[i+1];
+   if(!a&&!b)throw Error('Invalid empty tournament match');
    const aWins=!b||a.score>b.score||(a.score===b.score&&randomInt(2)===0);
    const winner=aWins?a:b,loser=b?(aWins?b:a):null;
    games.push({a,b,winnerId:winner.id,loserId:loser?.id||null,bye:!b});
@@ -263,7 +266,7 @@ function buildTournament(entries){
   }
   rounds.push(games);contestants=next;
  }
- return {entries:original,rounds,champion:contestants[0]||null};
+ return {entries:shuffled,slots,rounds,champion:contestants[0]||null};
 }
 function resolveBattle(room,round){
  if(rooms.get(room.code)!==room||room.round!==round||room.phase!=='racing')return;
@@ -275,7 +278,7 @@ function resolveBattle(room,round){
  }));
  const tournament=buildTournament(fighters);
  const champion=tournament.champion,anySubmitted=fighters.some(e=>e.score>0);
- room.battle={entries:tournament.entries,rounds:tournament.rounds,championId:champion?.id||null};
+ room.battle={entries:tournament.entries,slots:tournament.slots,rounds:tournament.rounds,championId:champion?.id||null};
  const note=anySubmitted?'Won the elimination championship!':'Nobody submitted a fighter.';
  finish(room,anySubmitted&&champion?[champion.id]:[],note);
 }

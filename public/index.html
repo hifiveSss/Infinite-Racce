@@ -77,10 +77,66 @@
 @keyframes battleImpactPop{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}30%{transform:translate(-50%,-50%) scale(1.35);opacity:1}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}}
 #battleNarration{min-height:24px;margin:12px 0;font-weight:600}
 @media(max-width:550px){.resultsCard:has(#battleArena:not(.hidden)){padding:18px 9px}.battleBracket{gap:6px}.bracketRound{flex-basis:115px;min-width:115px}.battleStage .battleFighter span{font-size:34px}.battleStage .battleFighter{height:126px}.battleStage{height:162px}}
+
+.resultsCard:has(#battleArena:not(.hidden)){width:min(1150px,99vw);max-height:96dvh;overflow:auto;padding:20px 14px;background:#fafbff}
+#battleArena{width:100%}
+#battleBracket{width:100%;display:block;overflow:auto;max-height:72dvh;padding:3px;background:#fff;border:1px solid #e5e8f0;border-radius:12px}
+#battleBracket svg{display:block;width:100%;min-width:660px;height:auto}
+#battleBracket .treeConnector{fill:none;stroke:#b4bccb;stroke-width:2.2;stroke-linejoin:round}
+#battleBracket .treeConnector.complete{stroke:#8cbea6;stroke-width:3}
+#battleBracket .treeNode rect{fill:#fff;stroke:#afb9cd;stroke-width:1.8}
+#battleBracket .treeNode text{font-family:Arial,sans-serif;font-size:12px;font-weight:700;fill:#202b3b;text-anchor:middle}
+#battleBracket .treeNode .treeItemName{font-size:10px;font-weight:400;fill:#647089}
+#battleBracket .treeNode.placeholder rect{fill:#f3f5f9;stroke:#d6dce7;stroke-dasharray:3 4}
+#battleBracket .treeNode.placeholder text{fill:#9aa3b2}
+#battleBracket .treeNode.eliminated rect{fill:#e7e9ed;stroke:#bfc4cc}
+#battleBracket .treeNode.eliminated text{fill:#969aa3;text-decoration:line-through}
+#battleBracket .treeNode.champion rect{fill:#fff1bf;stroke:#dbaa21;stroke-width:3}
+#battleBracket .treeMoving{pointer-events:none;filter:drop-shadow(0 0 7px #edb73b);transition:transform 1.3s cubic-bezier(.15,.75,.25,1)}
+#battleBracket .treeMoving rect{fill:#ffe8a5;stroke:#d89c18;stroke-width:3}
+#battleBracket .treeMoving text{font-family:Arial,sans-serif;font-size:12px;font-weight:800;fill:#222;text-anchor:middle}
+#battleBracket .treeMoving .treeItemName{font-size:10px;font-weight:400}
+#battleStage{height:min(430px,55dvh);min-height:290px;background:radial-gradient(ellipse at 50% 100%,#d8e5fb 0%,#f5f8ff 56%,#fff 100%);border:1px solid #dce4f2;border-radius:18px;position:relative;overflow:hidden}
+#battleStage .battleFight{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:flex-end;padding:0 8%;gap:22px;margin:0}
+#battleStage .battleFighter{position:relative;min-width:0;width:30%;max-width:200px;height:196px;background:#fff;border:3px solid #c2c9d8;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 6px;transition:none;opacity:1;will-change:transform;animation:none}
+#battleStage .battleFighter span{font-size:54px;animation:none}
+#battleStage .battleFighter b{font-size:16px;margin:8px 0 4px;overflow-wrap:anywhere}
+#battleStage .battleFighter small{font-size:12px;color:#6d7486;overflow-wrap:anywhere}
+#battleStage .battleFighter:first-child,#battleStage .battleFighter:last-child{transform:none;opacity:1}
+#battleStage .fighterSword{position:absolute;right:-34px;top:65px;font-size:62px;line-height:1;transform-origin:18% 85%;filter:drop-shadow(1px 2px 2px #7d88a1)}
+#battleStage .battleFighter.right .fighterSword{right:auto;left:-34px;transform:scaleX(-1) rotate(-32deg)}
+#battleStage .battleFighter.left .fighterSword{transform:rotate(-32deg)}
+#battleStage.duelling .battleFighter.left{animation:duelLeft 3s ease-in-out forwards}
+#battleStage.duelling .battleFighter.right{animation:duelRight 3s ease-in-out forwards}
+#battleStage.duelling .battleFighter.left .fighterSword{animation:swordLeft .55s ease-in-out 5 alternate}
+#battleStage.duelling .battleFighter.right .fighterSword{animation:swordRight .55s ease-in-out 5 alternate}
+#battleStage .battleFighter.dead{animation:loserFall .85s ease-in forwards!important;filter:grayscale(.8)}
+#battleStage .battleFighter.victor{animation:winnerStand .85s ease-out forwards!important;border-color:#e5b134;background:#fff8df}
+#battleStage .battleFighter.victor .fighterSword{animation:raiseSword .9s cubic-bezier(.15,1.8,.2,1) forwards!important}
+#battleStage .battleBlood{position:absolute;bottom:12px;left:22%;width:68px;height:68px;background:#c92f3f;border-radius:50%;transform:scale(.1);opacity:0;pointer-events:none;z-index:0}
+#battleStage .battleBlood.right{left:auto;right:22%}
+#battleStage .battleBlood.visible{animation:bloodCircle .8s ease-out forwards}
+#battleStage #battleImpact{font-size:64px;opacity:0;z-index:3}
+#battleStage.duelling #battleImpact{animation:swordImpact 3s linear forwards}
+@keyframes duelLeft{0%{transform:translateX(-24%)}18%{transform:translateX(23%)}30%{transform:translateX(9%) rotate(-4deg)}43%{transform:translateX(28%) rotate(5deg)}55%{transform:translateX(10%)}70%{transform:translateX(30%) rotate(-6deg)}82%{transform:translateX(12%)}94%,100%{transform:translateX(32%)}}
+@keyframes duelRight{0%{transform:translateX(24%)}18%{transform:translateX(-23%)}30%{transform:translateX(-9%) rotate(4deg)}43%{transform:translateX(-28%) rotate(-5deg)}55%{transform:translateX(-10%)}70%{transform:translateX(-30%) rotate(6deg)}82%{transform:translateX(-12%)}94%,100%{transform:translateX(-32%)}}
+@keyframes swordLeft{from{transform:rotate(-60deg)}to{transform:rotate(44deg)}}
+@keyframes swordRight{from{transform:scaleX(-1) rotate(-60deg)}to{transform:scaleX(-1) rotate(42deg)}}
+@keyframes swordImpact{0%,18%,24%,40%,46%,69%,75%,94%,100%{opacity:0;transform:translate(-50%,-50%) scale(.5)}21%,43%,72%,97%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}}
+@keyframes loserFall{0%{transform:translateY(0) rotate(0);opacity:1}70%{transform:translateY(76px) rotate(78deg);opacity:1}100%{transform:translateY(86px) rotate(88deg);opacity:.55}}
+@keyframes winnerStand{0%{transform:translateY(0) scale(1)}100%{transform:translateY(-25px) scale(1.13)}}
+@keyframes raiseSword{0%{transform:rotate(-18deg)}100%{transform:translateY(-50px) rotate(-125deg)}}
+@keyframes bloodCircle{0%{opacity:0;transform:scale(.1)}100%{opacity:.83;transform:scale(1)}}
+#battleArena .tournamentRound{font-size:19px;font-weight:800;margin:5px 0 14px}
+#battleArena #battleNarration{font-size:15px;margin:10px auto 5px}
+#battleArena.cinema-duel #battleBracket,#battleArena.cinema-duel #tournamentRound,#battleArena.cinema-duel #battleNarration{display:none!important}
+#battleArena.cinema-tree #battleStage{display:none!important}
+#battleArena.cinema-duel #battleStage{display:block!important}
+@media(max-width:600px){#battleStage .battleFighter{height:148px;width:35%}#battleStage .battleFighter span{font-size:37px}#battleStage .fighterSword{font-size:44px;right:-25px;top:48px}#battleStage .battleFighter.right .fighterSword{left:-25px}#battleStage{min-height:250px}}
 </style></head><body>
 <div id="app"><main id="board" aria-label="Crafting board"><canvas id="starfield"></canvas><div id="world"></div><div id="logo">INFINITE RACE<span>CRAFT ANYTHING</span></div><div id="boardTitle"><b>Infinite</b><br>Craft</div><button id="raceBtn">🏁 Multiplayer Race</button><div id="localAiStatus" style="position:absolute;top:65px;left:17px;z-index:5;background:#ffffffed;border:1px solid #ddd;border-radius:7px;padding:7px 10px;font-size:12px;max-width:265px"><label for="aiQuality" style="font-weight:600">AI quality</label><select id="aiQuality" title="Select browser AI quality" style="margin:4px 0 5px;width:100%;padding:4px;border:1px solid #ddd;border-radius:5px;background:white"><option value="auto">Auto · best for your device</option><option value="smart">Smart · Qwen2.5 1.5B (WebLLM GPU)</option><option value="light">Light · Qwen2.5 0.5B</option></select><label for="aiBackend" style="display:block;font-size:11px;margin-top:4px">Processing</label><select id="aiBackend" style="width:100%;padding:4px;margin:3px 0 5px;border:1px solid #ddd;border-radius:5px"><option value="webgpu">GPU · fastest</option><option value="cpu">CPU · compatibility (slower)</option></select><button id="loadLocalAi" style="background:#fff;border:0;font-weight:700;padding:2px;cursor:pointer">🧠 Load local AI</button><div id="localAiText" style="color:#666;margin-top:3px">Local AI runs on your computer. Themed bingo can look up Wikipedia for free.</div></div><button id="racePill" class="hidden"></button><div id="bottomLeft"><button class="plainButton" id="menuBtn">☷ Menu</button><button class="plainButton roundButton" id="helpBtn" title="How to play">?</button></div><div id="bottomRight"><button class="plainButton roundButton" id="soundToggle" title="Mute sounds" aria-label="Mute sounds">🔊</button><button class="plainButton roundButton" id="zoomOut" title="Zoom out">−</button><span class="zoomDisplay" id="zoomDisplay">100%</span><button class="plainButton roundButton" id="zoomIn" title="Zoom in">+</button><button class="plainButton" id="centerBtn">⤢ Reset view</button></div><div id="toast"></div><div id="bingoPanel" class="boardPanel hidden"><button id="minBingo" class="minimize" title="Collapse bingo">▾</button><h3 id="bingoTitle">Bingo</h3><div id="bingoGrid" class="bingoGrid"></div><div id="bingoScores" class="scoreLine"></div></div><div id="battlePanel" class="boardPanel hidden"><h3>⚔️ POWER BATTLE</h3><div id="battleTimer" style="font-size:24px;text-align:center;font-weight:bold">01:30</div><p style="font-size:12px;text-align:center">Choose your most powerful discovery</p><select id="battleItem" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:7px"></select><button class="plainButton" id="battleSubmit" style="width:100%;margin-top:8px">Submit fighter</button><p id="battleStatus" class="muted" style="text-align:center"></p></div></main><aside id="sidebar"><div id="sideTop"><div id="sideTitle">Items <span id="count">4</span></div></div><div class="bank" id="bank"></div><div id="sideHint">← Drag elements to craft</div><div id="sideFooter"><div id="tabs"><button id="discoveriesTab" class="tab active">✧ Discoveries</button><button id="timeTab" class="tab">◷ Time</button><button id="clear" class="tab" title="Clear the board">▤ Clear</button></div><div id="searchRow"><span>⌕</span><input id="search" placeholder="Search items..." autocomplete="off"></div></div></aside></div>
 <div id="preparingBlock" class="hidden"><div class="prepStage"><div class="prepEyebrow">INFINITE RACE • BINGO</div><h2 class="prepTitle">Building your bingo board</h2><p id="prepInfo" class="prepInfo">Preparing squares for everyone...</p><div id="prepBoard" class="prepBoard"></div><div class="prepProgress"><div id="prepProgressFill" class="prepProgressFill"></div></div><p id="prepCount" class="prepInfo">0 / 9 squares ready</p></div></div>
-<div id="overlay" class="hidden"><div id="modal"><header><h2 id="modalTitle">Multiplayer Race</h2><button id="closeModal" title="Close">×</button></header><div id="modalBody"><p>Create a private lobby, share the code and race your friends to a word. Everyone's discoveries reset for each race.</p><input id="name" placeholder="Your player name" maxlength="20"><div id="lobbySetup"><div class="line"><button class="action" id="create">Create lobby</button></div><div class="line"><input id="joinCode" placeholder="6-character lobby code" maxlength="6"><button class="action secondary" id="join">Join</button></div></div><div id="roomDetails" class="hidden"><div class="line"><strong>Lobby: <span id="code"></span></strong><button class="action secondary" id="copy">Copy code</button></div><p id="status"></p><div id="target"></div><div id="hostControls" class="hidden"><div class="modeSelector"><label><input type="radio" name="raceMode" value="word" checked>🎯 Find a word</label><label><input type="radio" name="raceMode" value="bingo">▦ Bingo</label><label><input type="radio" name="raceMode" value="battle">⚔️ Battle</label></div><label class="optionsLabel" for="category">Category / theme (optional)</label><input id="category" placeholder="e.g. Cyberpunk, Fantasy, Space"><label class="optionsLabel">Random target difficulty: <span id="difficultyLabel">Medium — Dragon, Robot, Volcano</span></label><input type="range" id="difficulty" min="0" max="2" value="1" step="1" style="width:100%"><div id="battleOptions" class="hidden"><label class="optionsLabel" for="battleTime">Battle time (seconds)</label><input id="battleTime" type="number" min="15" max="900" value="90"><small>Craft the strongest item you can, click Submit, then watch the AI-style showdown at the deadline.</small></div><div id="wordOptions"><label class="optionsLabel" for="customTarget">Target word</label><input id="customTarget" placeholder="Leave blank for random"></div><div id="bingoOptions" class="bingoOptions hidden"><label class="optionsLabel" for="bingoSize">Bingo board</label><select id="bingoSize"><option value="3">3 × 3 — 9 squares</option><option value="4">4 × 4 — 16 squares</option><option value="5">5 × 5 — 25 squares</option></select><label class="optionsLabel" for="bingoCustom">Custom bingo targets (optional)</label><textarea id="bingoCustom" placeholder="Steam, Dragon, Volcano, Robot..."></textarea><small>Separate words with commas or new lines. Blank squares are filled randomly. First player to discover a square owns it. Complete a row, column or diagonal to win, or claim the most when the entire board is filled.</small></div><button class="action" id="start" style="margin-top:12px">Start race</button></div><h3 style="font-size:14px">Players</h3><div class="players" id="players"></div><button id="leave" class="action secondary">Leave lobby</button></div><p class="muted">Unknown combinations use an adjustable local AI in your browser, with no API fees. On first use, your browser downloads and caches the model automatically. GPU mode is fastest; CPU compatibility mode is available for Light AI. Models are cached in the browser when storage permits. Multiplayer results are shared and cached by the server.</p></div></div></div><aside id="restartVotePanel" class="restartVotePanel hidden" role="status"><strong>🔄 Restart this race?</strong><p id="restartVoteInfo">The host wants to start a new race.</p><div id="restartVoteActions"><button id="restartYes">Vote yes</button><button id="restartNo">Keep playing</button></div><small id="restartVoteCount"></small></aside><div id="results" class="results hidden"><div id="confetti" class="resultsConfetti"></div><div class="resultsCard"><div class="trophy" id="resultsTrophy">🏆</div><div id="battleArena" class="hidden"><div id="tournamentRound" class="tournamentRound"></div><div id="battleBracket" class="battleBracket"></div><div id="battleStage" class="battleStage hidden"><div id="battleFight" class="battleFight"></div><div id="battleImpact">⚡</div></div><p id="battleNarration"></p></div><h1 id="resultHeading">RACE FINISHED!</h1><div id="winnerName" class="winnerName"></div><div id="winnerReason" class="winnerReason"></div><div id="resultScores" class="resultScores"></div><div class="waiting" id="resultWaiting">⏳ Waiting for the host to start another race...</div><button id="resultsLobby">View lobby</button> <button id="dismissResults">Keep waiting</button></div></div>
+<div id="overlay" class="hidden"><div id="modal"><header><h2 id="modalTitle">Multiplayer Race</h2><button id="closeModal" title="Close">×</button></header><div id="modalBody"><p>Create a private lobby, share the code and race your friends to a word. Everyone's discoveries reset for each race.</p><input id="name" placeholder="Your player name" maxlength="20"><div id="lobbySetup"><div class="line"><button class="action" id="create">Create lobby</button></div><div class="line"><input id="joinCode" placeholder="6-character lobby code" maxlength="6"><button class="action secondary" id="join">Join</button></div></div><div id="roomDetails" class="hidden"><div class="line"><strong>Lobby: <span id="code"></span></strong><button class="action secondary" id="copy">Copy code</button></div><p id="status"></p><div id="target"></div><div id="hostControls" class="hidden"><div class="modeSelector"><label><input type="radio" name="raceMode" value="word" checked>🎯 Find a word</label><label><input type="radio" name="raceMode" value="bingo">▦ Bingo</label><label><input type="radio" name="raceMode" value="battle">⚔️ Battle</label></div><label class="optionsLabel" for="category">Category / theme (optional)</label><input id="category" placeholder="e.g. Cyberpunk, Fantasy, Space"><label class="optionsLabel">Random target difficulty: <span id="difficultyLabel">Medium — Dragon, Robot, Volcano</span></label><input type="range" id="difficulty" min="0" max="2" value="1" step="1" style="width:100%"><div id="battleOptions" class="hidden"><label class="optionsLabel" for="battleTime">Battle time (seconds)</label><input id="battleTime" type="number" min="15" max="900" value="90"><small>Craft the strongest item you can, click Submit, then watch the AI-style showdown at the deadline.</small></div><div id="wordOptions"><label class="optionsLabel" for="customTarget">Target word</label><input id="customTarget" placeholder="Leave blank for random"></div><div id="bingoOptions" class="bingoOptions hidden"><label class="optionsLabel" for="bingoSize">Bingo board</label><select id="bingoSize"><option value="3">3 × 3 — 9 squares</option><option value="4">4 × 4 — 16 squares</option><option value="5">5 × 5 — 25 squares</option></select><label class="optionsLabel" for="bingoCustom">Custom bingo targets (optional)</label><textarea id="bingoCustom" placeholder="Steam, Dragon, Volcano, Robot..."></textarea><small>Separate words with commas or new lines. Blank squares are filled randomly. First player to discover a square owns it. Complete a row, column or diagonal to win, or claim the most when the entire board is filled.</small></div><button class="action" id="start" style="margin-top:12px">Start race</button></div><h3 style="font-size:14px">Players</h3><div class="players" id="players"></div><button id="leave" class="action secondary">Leave lobby</button></div><p class="muted">Unknown combinations use an adjustable local AI in your browser, with no API fees. On first use, your browser downloads and caches the model automatically. GPU mode is fastest; CPU compatibility mode is available for Light AI. Models are cached in the browser when storage permits. Multiplayer results are shared and cached by the server.</p></div></div></div><aside id="restartVotePanel" class="restartVotePanel hidden" role="status"><strong>🔄 Restart this race?</strong><p id="restartVoteInfo">The host wants to start a new race.</p><div id="restartVoteActions"><button id="restartYes">Vote yes</button><button id="restartNo">Keep playing</button></div><small id="restartVoteCount"></small></aside><div id="results" class="results hidden"><div id="confetti" class="resultsConfetti"></div><div class="resultsCard"><div class="trophy" id="resultsTrophy">🏆</div><div id="battleArena" class="hidden"><div id="tournamentRound" class="tournamentRound"></div><div id="battleBracket" class="battleBracket"></div><div id="battleStage" class="battleStage hidden"><div id="battleFight" class="battleFight"></div><div id="battleImpact">⚔️</div><div id="battleBlood" class="battleBlood"></div></div><p id="battleNarration"></p></div><h1 id="resultHeading">RACE FINISHED!</h1><div id="winnerName" class="winnerName"></div><div id="winnerReason" class="winnerReason"></div><div id="resultScores" class="resultScores"></div><div class="waiting" id="resultWaiting">⏳ Waiting for the host to start another race...</div><div id="resultButtons"><button id="resultsLobby">View lobby</button> <button id="dismissResults">Keep waiting</button></div></div></div>
 <script src="/socket.io/socket.io.js"></script><script>
 const $=id=>document.getElementById(id),board=$('board'),world=$('world'),canvas=$('starfield'),ctx=canvas.getContext('2d'),socket=io();
 let bank=['Water','Fire','Wind','Earth'],pieces=[],selected=null,room=null,view={x:0,y:0,scale:1},highestZ=2,activePan=null,clockStart=Date.now(),currentTab='discoveries';
@@ -322,40 +378,91 @@ function renderBingo(){const active=room&&(room.mode==='bingo')&&(room.phase==='
 $('minBingo').onclick=()=>{$('bingoPanel').classList.toggle('minimized');$('minBingo').textContent=$('bingoPanel').classList.contains('minimized')?'▸':'▾'};
 
 let tournamentToken=0;
-function makeFighter(entry){
- const el=document.createElement('div');
- el.className='battleFighter';
- const emoji=document.createElement('span'),name=document.createElement('b'),word=document.createElement('small');
+function makeFighter(entry,side){
+ const el=document.createElement('div');el.className='battleFighter '+side;
+ const emoji=document.createElement('span'),name=document.createElement('b'),word=document.createElement('small'),sword=document.createElement('div');
  emoji.textContent=entry?.emoji||'⚔️';name.textContent=entry?.name||'Player';word.textContent=entry?.word||'No submission';
- el.append(emoji,name,word);
+ sword.className='fighterSword';sword.textContent='🗡️';
+ el.append(emoji,name,word,sword);
  el.style.borderColor=room?.players?.find(p=>p.id===entry?.id)?.color||'#b4b8ca';
  return el;
 }
-function drawTournamentBracket(rounds,roundIndex,matchIndex){
+function bracketGeometry(rounds,slots){
+ const size=Math.max(2,slots.length),depth=rounds.length,perSide=size/2;
+ const width=1160,step=158,outer=113,header=43,rowHeight=size>=16?68:Math.max(80,520/perSide);
+ const height=Math.max(250,perSide*rowHeight+header+48);
+ const pos=(level,index)=>{
+  if(level===depth)return {x:width/2,y:header+perSide*rowHeight/2};
+  const halfSlots=perSide/(2**level),right=index>=halfSlots,local=right?index-halfSlots:index;
+  const x=right?width-outer-level*step:outer+level*step;
+  return {x,y:header+(local+.5)*2**level*rowHeight};
+ };
+ return {width,height,size,depth,pos};
+}
+function drawTournamentBracket(rounds,roundIndex,matchIndex,slots){
  const root=$('battleBracket');root.replaceChildren();
- const last=rounds.length-1;
- for(let ri=0;ri<rounds.length;ri++){
-  const col=document.createElement('section');col.className='bracketRound';
-  const title=document.createElement('h3');
-  title.textContent=ri===last?'Final':ri===last-1?'Semifinal':'Round '+(ri+1);
-  col.append(title);
-  for(let mi=0;mi<rounds[ri].length;mi++){
-   const match=rounds[ri][mi],visible=ri<=roundIndex,done=ri<roundIndex||(ri===roundIndex&&mi<=matchIndex);
-   const tile=document.createElement('div');
-   tile.className='bracketMatch'+(done?' done':visible&&mi===matchIndex+1?' active':'');
-   for(const entry of [match.a,match.b]){
-    const line=document.createElement('div');line.className='matchPlayer';
-    if(!visible){line.textContent='⏳ TBD'}
-    else if(entry){
-     line.textContent=(entry.emoji||'⚔️')+' '+entry.name+' · '+entry.word;
-     if(done)line.classList.add(entry.id===match.winnerId?'won':'lost');
-    }else line.textContent='— Bye —';
-    tile.append(line);
+ const data=bracketGeometry(rounds,slots),ns='http://www.w3.org/2000/svg';
+ const svg=document.createElementNS(ns,'svg');
+ svg.setAttribute('viewBox',`0 0 ${data.width} ${data.height}`);
+ svg.setAttribute('role','img');
+ svg.setAttribute('aria-label','Mirrored championship bracket with player names and advancing winners');
+ root.append(svg);
+ const create=(tag,attributes={},parent=svg)=>{const node=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attributes))node.setAttribute(k,String(v));parent.append(node);return node};
+ const textNode=(parent,text,x,y,cls)=>{const n=create('text',{x,y,class:cls||''},parent);n.textContent=String(text);return n};
+ const done=(r,m)=>r<roundIndex||(r===roundIndex&&m<=matchIndex);
+ const filled=[slots.slice()],eliminated=new Set();
+ for(let r=0;r<rounds.length;r++){
+  const layer=Array(rounds[r].length).fill(null);
+  for(let m=0;m<rounds[r].length;m++){
+   if(done(r,m)){
+    const match=rounds[r][m];
+    layer[m]=(match.a?.id===match.winnerId?match.a:match.b)||null;
+    if(match.loserId)eliminated.add(r+':'+(2*m+(match.a?.id===match.loserId?0:1)));
    }
-   col.append(tile);
   }
-  root.append(col);
+  filled.push(layer);
  }
+ const lines=create('g',{class:'treeLines'});
+ for(let r=0;r<rounds.length;r++)for(let m=0;m<rounds[r].length;m++){
+  const dst=data.pos(r+1,m);
+  for(let side=0;side<2;side++){
+   const src=data.pos(r,2*m+side),elbow=(src.x+dst.x)/2;
+   create('path',{d:`M${src.x} ${src.y} H${elbow} V${dst.y} H${dst.x}`,class:'treeConnector'+(done(r,m)?' complete':'')},lines);
+  }
+ }
+ const nodes=create('g',{class:'treeNodes'});
+ for(let r=0;r<filled.length;r++)for(let i=0;i<filled[r].length;i++){
+  const entry=filled[r][i],p=data.pos(r,i);
+  const group=create('g',{class:'treeNode'+(!entry?' placeholder':'')+(eliminated.has(r+':'+i)?' eliminated':'')+(entry&&r===rounds.length?' champion':''),transform:`translate(${p.x},${p.y})`},nodes);
+  create('rect',{x:-60,y:-25,width:120,height:50,rx:8},group);
+  if(entry){
+   const label=(entry.emoji||'⚔️')+' '+entry.name;
+   textNode(group,label.length>18?label.slice(0,16)+'…':label,0,-5);
+   const word=entry.word||'';
+   textNode(group,word.length>21?word.slice(0,19)+'…':word,0,12,'treeItemName');
+  }else textNode(group,'• • •',0,5);
+ }
+ const headers=create('g',{class:'bracketTitle'});
+ textNode(headers,'LEFT SIDE',data.width*.22,22,'treeItemName');
+ textNode(headers,'🏆 CHAMPION',data.width/2,22);
+ textNode(headers,'RIGHT SIDE',data.width*.78,22,'treeItemName');
+ return {svg,data,create};
+}
+async function animateBracketAdvance(rounds,slots,ri,mi,token,wait){
+ const match=rounds[ri][mi],renderer=drawTournamentBracket(rounds,ri,mi-1,slots);
+ const chosen=match.a?.id===match.winnerId?0:1;
+ const from=renderer.data.pos(ri,2*mi+chosen),to=renderer.data.pos(ri+1,mi);
+ const winner=chosen===0?match.a:match.b;
+ const group=renderer.create('g',{class:'treeMoving'});
+ group.style.transform=`translate(${from.x}px,${from.y}px)`;
+ renderer.create('rect',{x:-60,y:-25,width:120,height:50,rx:8},group);
+ const main=renderer.create('text',{x:0,y:-5},group);main.textContent=(winner.emoji||'⚔️')+' '+winner.name;
+ const sub=renderer.create('text',{x:0,y:12,class:'treeItemName'},group);sub.textContent=winner.word||'';
+ if(!await wait(130))return false;
+ group.style.transform=`translate(${to.x}px,${to.y}px)`;
+ if(!await wait(1500))return false;
+ drawTournamentBracket(rounds,ri,mi,slots);
+ return await wait(900);
 }
 function setFinalResult(data){
  const own=Array.isArray(data.ids)&&data.ids.includes(socket.id);
@@ -371,58 +478,52 @@ function setFinalResult(data){
  $('winnerName').classList.remove('hidden');
  $('winnerReason').classList.remove('hidden');
  $('resultWaiting').classList.remove('hidden');
+ $('resultButtons').classList.remove('hidden');
  if(own)sound('win');
 }
 async function playTournament(data,token){
- const rounds=data.battle?.rounds||[];
- if(!rounds.length){setFinalResult(data);return}
+ const rounds=data.battle?.rounds||[],slots=data.battle?.slots||data.battle?.entries||[];
  const alive=()=>token===tournamentToken&&!$('results').classList.contains('hidden');
- const wait=async(ms)=>{await new Promise(resolve=>setTimeout(resolve,ms));return alive()};
+ const wait=async ms=>{await new Promise(resolve=>setTimeout(resolve,ms));return alive()};
+ if(!rounds.length){setFinalResult(data);return}
+ const scene=$('battleArena'),stage=$('battleStage');
+ const tree=()=>{scene.classList.add('cinema-tree');scene.classList.remove('cinema-duel');stage.className='battleStage hidden'};
+ const duel=()=>{scene.classList.remove('cinema-tree');scene.classList.add('cinema-duel');stage.className='battleStage';$('battleBlood').className='battleBlood'};
  for(let ri=0;ri<rounds.length;ri++){
   $('tournamentRound').textContent=ri===rounds.length-1?'🏆 THE FINAL':'ROUND '+(ri+1)+' OF '+rounds.length;
-  $('battleStage').className='battleStage hidden';
-  $('battleNarration').textContent='The next fighters advance into the arena…';
-  drawTournamentBracket(rounds,ri,-1);
-  if(!await wait(1100))return;
   for(let mi=0;mi<rounds[ri].length;mi++){
    if(!alive())return;
    const match=rounds[ri][mi];
-   if(!match.b){
-    $('battleNarration').textContent=match.a.name+' advances with a bye!';
-    drawTournamentBracket(rounds,ri,mi);
-    if(!await wait(1400))return;
-    continue;
+   tree();drawTournamentBracket(rounds,ri,mi-1,slots);
+   $('battleNarration').textContent='Next fight: '+match.a?.name+(match.b?' vs '+match.b.name:' earns a bye');
+   if(!await wait(1900))return;
+   if(match.b){
+    duel();
+    const left=makeFighter(match.a,'left'),right=makeFighter(match.b,'right');
+    $('battleFight').replaceChildren(left,right);
+    if(!await wait(150))return;
+    stage.classList.add('duelling');sound('fight');
+    if(!await wait(3000))return;
+    stage.classList.remove('duelling');
+    const dead=match.loserId===match.a.id?left:right;
+    const winner=match.winnerId===match.a.id?left:right;
+    dead.classList.add('dead');
+    $('battleBlood').className='battleBlood '+(dead===right?'right':'left')+' visible';
+    if(!await wait(950))return;
+    winner.classList.add('victor');
+    if(!await wait(1300))return;
    }
-   const stage=$('battleStage');
-   stage.className='battleStage';
-   const left=makeFighter(match.a),right=makeFighter(match.b);
-   $('battleFight').replaceChildren(left,right);
-   $('battleNarration').textContent=match.a.name+' VS '+match.b.name;
-   // Let off-screen entrances paint before switching state.
-   if(!await wait(110))return;
-   stage.classList.add('enter');
-   if(!await wait(950))return;
-   stage.classList.add('clash');
-   sound('fight');
-   if(!await wait(720))return;
-   stage.classList.remove('clash');
-   stage.classList.add('settled');
-   (match.a.id===match.loserId?left:right).classList.add('defeated');
-   (match.a.id===match.winnerId?left:right).classList.add('victor');
-   const winner=match.winnerId===match.a.id?match.a:match.b;
-   const loser=match.loserId===match.a.id?match.a:match.b;
-   $('battleNarration').textContent=winner.word+' defeats '+loser.word+'! '+winner.name+' advances!';
-   if(!await wait(1250))return;
-   stage.className='battleStage hidden';
-   drawTournamentBracket(rounds,ri,mi);
-   if(!await wait(900))return;
+   tree();
+   $('battleNarration').textContent=(match.b?'Winner advances: ':'Bye advances: ')+(match.winnerId===match.a?.id?match.a?.name:match.b?.name);
+   if(!await animateBracketAdvance(rounds,slots,ri,mi,token,wait))return;
   }
  }
  if(!alive())return;
- $('battleStage').className='battleStage hidden';
+ tree();drawTournamentBracket(rounds,rounds.length,999,slots);
  $('tournamentRound').textContent='🏆 CHAMPIONSHIP COMPLETE';
  $('battleNarration').textContent='';
- drawTournamentBracket(rounds,rounds.length,999);
+ if(!await wait(1800))return;
+ scene.classList.remove('cinema-tree','cinema-duel');stage.className='battleStage hidden';
  setFinalResult(data);
 }
 function showResults(data){
@@ -444,6 +545,9 @@ function showResults(data){
  $('resultScores').classList.toggle('hidden',data.mode!=='bingo');
  const tournament=Boolean(data.battle?.rounds?.length);
  $('battleArena').classList.toggle('hidden',!tournament);
+ $('battleArena').classList.toggle('cinema-tree',tournament);
+ $('battleArena').classList.remove('cinema-duel');
+ $('resultButtons').classList.toggle('hidden',tournament);
  for(const id of ['resultsTrophy','resultHeading','winnerName','winnerReason','resultWaiting'])
   $(id).classList.toggle('hidden',tournament);
  show('results');
