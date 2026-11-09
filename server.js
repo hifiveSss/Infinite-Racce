@@ -13,6 +13,36 @@ const bingoPool=['Steam','Dust','Mud','Lava','Rain','Cloud','Ocean','Lake','Isla
 const colors=['#e85d75','#3c8df0','#22a68a','#bc77ec','#f29e38','#6575da','#e26bb0','#6a9b30','#d26a49','#179aaf'];
 const difficultyPools={easy:['Steam','Mud','Dust','Rain','Tree','Cloud','Lake','Stone','Smoke','Mountain','Sand','Glass','Plant','Ice','Flower','Rainbow'],medium:['Volcano','Robot','Electricity','Dinosaur','Galaxy','Spaceship','Castle','Computer','Tornado','Forest','Rainbow','Ocean','Dragon','Time Machine','Satellite'],hard:['Black Hole','Supernova','Artificial Intelligence','Quantum Computer','Interstellar','Cyberpunk','Wormhole','Dyson Sphere','Nanotechnology','Terraforming']};
 const themed={cyberpunk:{easy:['Neon','Robot','City','Metal','Electricity','Computer','Night'],medium:['Cyberpunk','Hacker','Cybernetics','Android','Laser','Megacity','Drone','Artificial Intelligence'],hard:['Neural Interface','Cybernetic Uprising','Quantum Computer','Digital Immortality','Singularity']},fantasy:{easy:['Castle','Dragon','Magic','Sword','Wizard','Unicorn'],medium:['Phoenix','Enchantment','Kingdom','Spell','Dungeon','Excalibur'],hard:['Elder Dragon','Immortality','Necromancy','Arcane Empire']},space:{easy:['Moon','Star','Planet','Rocket','Sun'],medium:['Galaxy','Spaceship','Satellite','Black Hole','Solar System'],hard:['Supernova','Wormhole','Dyson Sphere','Terraforming','Interstellar']},nature:{easy:['Tree','Forest','Rain','Mountain','Flower','Lake'],medium:['Volcano','Hurricane','Dinosaur','Coral Reef','Earthquake'],hard:['Ecosystem','Evolution','Photosynthesis','Biodiversity']},technology:{easy:['Machine','Computer','Electricity','Car','Robot'],medium:['Internet','Satellite','Laser','Video Game','Artificial Intelligence'],hard:['Nanotechnology','Quantum Computer','Singularity','Fusion Reactor']}};
+const curatedThemes={
+ 'star wars':{
+  easy:['Luke Skywalker','Darth Vader','Yoda','R2-D2','C-3PO','Lightsaber','Stormtrooper','Jedi','Sith','Chewbacca','Princess Leia','Han Solo','Death Star','Tatooine','The Force','Obi-Wan Kenobi','Droid','X-Wing','Millennium Falcon','Boba Fett','Palpatine','Rebel Alliance','Jabba the Hutt','Ewok','Hoth','Wookiee','Blaster','Padawan'],
+  medium:['Anakin Skywalker','Ahsoka Tano','Darth Maul','Mandalorian','Kylo Ren','General Grievous','Clone Trooper','Star Destroyer','Coruscant','Naboo','Mustafar','Dagobah','Order 66','Grogu','Podracer','TIE Fighter','Endor','Jango Fett','Mace Windu','Count Dooku','Rey Skywalker','BB-8','Jedi Temple','Carbonite','Death Star II','Kamino','Geonosis','Darth Sidious'],
+  hard:['Darth Plagueis','Thrawn','Darth Revan','Beskar','Darksaber','Mortis','Nightsister','Mandalore','Kessel Run','Ilum','World Between Worlds','Darth Nihilus','Exegol','Sith Holocron','Rakata','Malgus','Yuuzhan Vong','Abeloth','Jedi Holocron','Lothal','Inquisitorius','Korriban','Darth Bane','Chiss Ascendancy','Ryloth','Purrgil','Dathomir','Moff Gideon']
+ },
+ 'cyberpunk':{
+  easy:['Neon','Robot','Computer','Hacker','Cybernetic Arm','Drone','Megacity','Laser','Android','Cyberpunk','Augmentation','Night City','Virtual Reality','Motorcycle','Cyberware','Hologram','Rooftop','Street Samurai','Implant','Smartgun','Nightclub','Skyscraper','Artificial Intelligence','Cyberdeck','Security Camera','Dystopia','Robot Arm','Neon Sign'],
+  medium:['Night City','Johnny Silverhand','V','Arasaka','Militech','Netrunner','Braindance','Sandevistan','Mantis Blades','Ripperdoc','Quickhack','Relic','Maelstrom','Voodoo Boys','MaxTac','NCPD','Adam Smasher','Afterlife','Judy Alvarez','Panam Palmer','Jackie Welles','Cyberpsychosis','Delamain','Kiroshi Optics','Blackwall','Edgerunner','Fixer','Trauma Team'],
+  hard:['Soulkiller','Mikoshi','Alt Cunningham','Songbird','Phantom Liberty','Dogtown','Kurt Hansen','NetWatch','Rogue AI','Engram','Temperance','Crystal Palace','Bartmoss','Spider Murphy','Doll Chip','Arasaka Tower','Erebus','Cynosure','Project Oracle','ICE','Net Architecture','Neural Matrix','Yorinobu Arasaka','Saburo Arasaka','Kang Tao','Biotechnica','DataKrash','Rache Bartmoss']
+ }
+};
+
+Object.assign(curatedThemes, {"fortnite":{"easy":["Battle Bus","Pickaxe","Glider","Shield Potion","Slurp Juice","Medkit","Bandage","Loot Llama","Supply Drop","Chest","Storm","Victory Royale","V-Bucks","Battle Pass","Reboot Van","Launch Pad","Boogie Bomb","Chug Jug","Port-a-Fort","Impulse Grenade","Bush","Campfire","Treasure Map","Rift","Zipline","Fishing Rod","Flopper","Golden Scar"],"medium":["Tilted Towers","Pleasant Park","Retail Row","Loot Lake","Dusty Depot","Tomato Town","Greasy Grove","Salty Springs","Lonely Lodge","Risky Reels","Wailing Woods","Fatal Fields","Junk Junction","Polar Peak","Mega Mall","Neo Tilted","The Agency","The Authority","The Daily Bugle","The Citadel","Slappy Shores","Havoc Pump Shotgun","Thunder Shotgun","Tactical Shotgun","Heavy Sniper Rifle","Grappler","Shockwave Grenade","Rocket Launcher","Battle Royale","Zero Build"],"hard":["Midas","Peely","Fishstick","Jonesy","The Foundation","The Visitor","The Scientist","The Paradigm","The Imagined","The Origin","The Cube Queen","The Herald","The Devourer","The Ice King","The Prisoner","The Zero Point","Kevin the Cube","Kado Thorne","Geno","Doctor Slone","Meowscles","Skye","TNTina","Brutus","Kit","Kondor","Raz","Spire Guardian","The Seven","The Imagined Order"]},"minecraft":{"easy":["Creeper","Zombie","Skeleton","Spider","Enderman","Diamond","Iron Pickaxe","Crafting Table","Furnace","Bed","Torch","Chest","Oak Log","Cobblestone","Dirt","Grass Block","Water Bucket","Lava Bucket","Boat","Minecart","Wolf","Pig","Cow","Sheep","Chicken","Villager","Wheat","Bread"],"medium":["Nether Portal","Enchanting Table","Redstone","Piston","Observer","Dispenser","Hopper","Blaze","Ghast","Wither Skeleton","Diamond Sword","Netherite","End Portal","Stronghold","Ocean Monument","Woodland Mansion","Ancient City","Bastion Remnant","Piglin","Hoglin","Allay","Axolotl","Shulker","Elytra","Trident","Totem of Undying","Beacon","Iron Golem"],"hard":["Ender Dragon","Wither","Warden","End Crystal","Ender Pearl","Eye of Ender","Nether Star","Conduit","Respawn Anchor","Lodestone","Sculk Catalyst","Sculk Shrieker","Ancient Debris","Netherite Ingot","Netherite Upgrade","Dragon Egg","Enchanted Golden Apple","Heart of the Sea","Dragon Breath","Tipped Arrow","Smithing Template","Crying Obsidian","Sniffer","Trial Chamber","Breeze","Ominous Vault","Heavy Core","Mace"]}});
+
+
+function themeKey(category){
+ const q=String(category||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ if(/\bstar\s*wars\b|\bstarwars\b/.test(q))return 'star wars';
+ if(/\bcyberpunk\b/.test(q))return 'cyberpunk';
+ if(/\bfortnite\b|\bfortnight game\b/.test(q))return 'fortnite';
+ if(/\bminecraft\b/.test(q))return 'minecraft';
+ return null;
+}
+function knownThemeTarget(category,word){
+ const key=themeKey(category);
+ if(!key)return true; // Unrecognised categories still use AI, but cannot be authoritatively verified.
+ return Object.values(curatedThemes[key]).some(words=>words.some(x=>normalize(x)===normalize(word)));
+}
+
 const normalize=s=>String(s||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
 function parseTargets(input){const raw=Array.isArray(input)?input:String(input||'').split(/[,\n;]+/);const found=[],seen=new Set();for(const item of raw){const w=String(item||'').trim().replace(/\s+/g,' ');const k=normalize(w);if(!w||seen.has(k))continue;if(w.length>55||!(/^[A-Za-z0-9][A-Za-z0-9 '\-]*$/.test(w)))throw Error('Use short word or phrase targets, separated by commas');if(base.some(b=>normalize(b)===k))throw Error('Starting elements cannot be bingo squares');seen.add(k);found.push(w)}return found}
 function pickPool(category,difficulty){const key=String(category||'').toLowerCase().trim();const group=Object.keys(themed).find(k=>key.includes(k));return group?themed[group][difficulty]:difficultyPools[difficulty]}
@@ -75,6 +105,7 @@ socket.on('preparationProgress',(data,cb)=>{
  if(!room||room.host!==socket.id||room.phase!=='preparing'||!room.preview)return ackError(cb,'No round is being prepared');
  try{
   const words=parseTargets(data?.words||[]);
+  for(const word of words)if(!knownThemeTarget(room.preview.category,word))return ackError(cb,'AI generated an unrelated '+room.preview.category+' target: '+word);
   for(const word of words){
    if(room.preview.words.length>=room.preview.total)break;
    if(!room.preview.words.some(x=>normalize(x)===normalize(word)))room.preview.words.push(word);
@@ -90,6 +121,7 @@ socket.on('cancelPreparation',(_data,cb)=>{
 });
 socket.on('start',async(data,cb)=>{const p=players.get(socket.id),room=rooms.get(p?.room);if(!room||room.host!==socket.id)return ackError(cb,'Only the host can start');if(room.phase==='racing')return ackError(cb,'Race already underway');const mode=['bingo','battle'].includes(data?.mode)?data.mode:'word';const difficulty=['easy','medium','hard'].includes(data?.difficulty)?data.difficulty:'medium';const category=String(data?.category||'').trim().slice(0,45);const duration=Math.max(15,Math.min(900,Number(data?.duration)||90));let target=null,board=[],size=3;try{const needsTheme=Boolean(category)&&mode!=='battle'&&(mode==='bingo'||!String(data?.target||'').trim());
  const generated=needsTheme?parseTargets(data?.preparedTargets||[]):[];
+ if(needsTheme&&generated.some(word=>!knownThemeTarget(category,word)))return ackError(cb,'AI produced targets that are not verified for this category. Regenerate the board.');
  if(needsTheme&&generated.some(w=>/\b(characters?|scenes?|items?|things?|concepts?|objects?|genre|theme|elements?|locations?)\b/i.test(w)))return ackError(cb,'Targets must be specific craftable words, not categories like Characters or Scenes.');
  const requested=mode==='bingo'?parseTargets(data?.custom||''):[];
  const remaining=mode==='bingo'?Math.max(0,Number(data?.size)**2-requested.length):1;
