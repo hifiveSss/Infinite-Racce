@@ -114,7 +114,7 @@ function readCandidates(text,category){
  }
  return arr.map(x=>cleanTarget(x,category)).filter(Boolean);
 }
-async function makeTargets(category,difficulty,count){
+async function makeTargets(category,difficulty,count,onProgress=()=>{}){
  const model=await load();const names=[];const seen=new Set();
  // A small model can reliably provide a few targets per response, not 25 at once.
  for(let attempt=0;attempt<Math.max(3,Math.ceil(count/4)+3)&&names.length<count;attempt++){
@@ -127,6 +127,7 @@ async function makeTargets(category,difficulty,count){
   const out=await model(messages,{max_new_tokens:Math.min(260,ask*32+50),do_sample:attempt>0,temperature:attempt>0?.55:undefined,return_full_text:false});
   const options=readCandidates(generatedText(out),category);
   for(const item of options){const key=item.toLowerCase();if(!seen.has(key)){seen.add(key);names.push(item);if(names.length===count)break}}
+  onProgress(names.slice());
   send({type:'status',message:`Prepared ${names.length}/${count} valid themed targets…`});
  }
  if(names.length<count)throw Error(`Prepared ${names.length}/${count} good targets. Try fewer bingo squares, a different theme or custom targets.`);
@@ -147,7 +148,7 @@ self.onmessage=e=>{
   backend=e.data.backend==='cpu'?'cpu':'webgpu';
   queue=queue.then(async()=>{
     try{send({type:'status',message:generator?`Crafting with ${MODELS[activeTier].label}…`:'Preparing local AI…'});
-      if(type==='targets')send({type:'targetsResult',id,targets:await makeTargets(String(e.data.category||'').slice(0,45),String(e.data.difficulty||'medium'),Math.min(25,Math.max(1,Number(e.data.count)||1)))});
+      if(type==='targets')send({type:'targetsResult',id,targets:await makeTargets(String(e.data.category||'').slice(0,45),String(e.data.difficulty||'medium'),Math.min(25,Math.max(1,Number(e.data.count)||1)),words=>send({type:'targetsProgress',id,targets:words}))});
       else send({type:'result',id,...await combine(String(a||''),String(b||''))});
     }catch(err){send({type:'error',id,message:formatErr(err)})}
   }).catch(err=>send({type:'error',id,message:formatErr(err)}));
