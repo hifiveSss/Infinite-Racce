@@ -176,44 +176,46 @@ $('start').onclick=async()=>{
  if($('start').disabled)return;
  const payload={mode:document.querySelector('input[name=raceMode]:checked').value,target:$('customTarget').value,size:Number($('bingoSize').value),custom:$('bingoCustom').value,category:$('category').value.trim(),difficulty:['easy','medium','hard'][Number($('difficulty').value)],duration:Number($('battleTime').value)};
  const isBingo=payload.mode==='bingo';
- const needsTargets=payload.category&&payload.mode!=='battle'&&(isBingo||!payload.target.trim());
+ const needsTargets=!!payload.category&&payload.mode!=='battle'&&(isBingo||!payload.target.trim());
  const prepare=isBingo||needsTargets;
- $('start').disabled=true;$('start').textContent=prepare?'▦ Preparing race…':'Starting race…';
+ $('start').disabled=true;$('start').textContent=prepare?'▦ Generating complete board…':'Starting race…';
  try{
   if(prepare){
    const prep=await emitCombine('prepareStart',{mode:payload.mode,size:payload.size,custom:payload.custom,category:payload.category,difficulty:payload.difficulty});
-   if(!prep?.ok)throw Error(prep?.error||'Cannot prepare round');
-   if(needsTargets){
-    const custom=isBingo?payload.custom.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean):[];
-    const count=isBingo?Math.max(0,payload.size*payload.size-custom.length):1;
-    let streamed=new Set(),progressQueue=Promise.resolve();
-    const streamWords=words=>{progressQueue=progressQueue.then(async()=>{
-      for(const word of words){
-        const key=String(word).toLowerCase();
-        if(streamed.has(key))continue;
-        streamed.add(key);
-        const progress=await emitCombine('preparationProgress',{words:[word]});
-        if(!progress?.ok)throw Error(progress?.error||'Could not share bingo targets');
-        if(isBingo)await delay(145);
-      }
-    });return progressQueue};
-    if(isBingo&&custom.length)await delay(custom.length*135+160);
-    const curated=count?curatedTargets(payload.category,payload.difficulty,count,custom):[];
-    payload.preparedTargets=curated||(count?await localTargetList(payload.category,payload.difficulty,count,words=>streamWords(words)):[]);
-    if(!Array.isArray(payload.preparedTargets)||payload.preparedTargets.length!==count)throw Error('Only '+(payload.preparedTargets?.length||0)+'/'+count+' themed targets were usable');
-    await streamWords(payload.preparedTargets);
-    await progressQueue;
+   if(!prep?.ok)throw Error(prep?.error||'Could not prepare round');
+   const custom=isBingo?payload.custom.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean):[];
+   const count=isBingo?payload.size*payload.size-custom.length:1;
+   let board=[];
+   if(isBingo&&!payload.category)board=prep.board||[];
+   else if(needsTargets){
+     const generated=count?curatedTargets(payload.category,payload.difficulty,count,custom)||await localTargetList(payload.category,payload.difficulty,count):[];
+     if(!Array.isArray(generated)||generated.length!==count)throw Error('AI could not produce all '+count+' theme targets. No incomplete board was shared.');
+     payload.preparedTargets=generated;
+     board=isBingo?[...custom,...generated]:generated;
    }
    if(isBingo){
-     await waitForSharedBoard(payload.size*payload.size);
-     // Keep the complete board visible before anyone can move.
-     await delay(1200);
-   }else await delay(500);
+     const unique=[...new Set(board.map(x=>String(x).trim().toLowerCase()))];
+     if(board.length!==payload.size*payload.size||unique.length!==board.length)
+       throw Error('The prepared board was incomplete or contained duplicates. No partial board was shown.');
+     $('start').textContent='▦ Revealing '+board.length+' squares…';
+   }
+   // Reveal ONLY AFTER every word is ready, so no AI error can freeze a partial board.
+   for(const word of board){
+     const response=await emitCombine('preparationProgress',{words:[word]});
+     if(!response?.ok)throw Error(response?.error||'Could not reveal the prepared board');
+     if(isBingo)await delay(160);
+   }
+   if(isBingo){await waitForSharedBoard(payload.size*payload.size);await delay(1150)}
+   else await delay(420);
   }
   const response=await emitCombine('start',payload);
-  if(!response?.ok)throw Error(response?.error||'Could not start race');
- }catch(e){if(prepare)await emitCombine('cancelPreparation',{});toast(e.message||'Could not prepare race');localStatus(e.message||'AI preparation failed')}
- finally{$('start').disabled=false;$('start').textContent='Start race'}
+  if(!response?.ok)throw Error(response?.error||'Could not start the race');
+ }catch(e){
+  if(prepare)await emitCombine('cancelPreparation',{});
+  toast(e?.message||'Unable to prepare round');localStatus(e?.message||'AI preparation failed');
+ }finally{
+  $('start').disabled=false;$('start').textContent='Start race';
+ }
 };
 $('leave').onclick=()=>socket.emit('leave');$('copy').onclick=()=>navigator.clipboard.writeText(room?.code||'').then(()=>toast('Lobby code copied')).catch(()=>toast('Code: '+room?.code));
 socket.on('emojis',mapping=>{Object.assign(emojis,mapping);refreshIcons()});socket.on('emoji',({word,emoji})=>{emojis[word]=emoji;refreshIcons()});
