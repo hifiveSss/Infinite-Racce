@@ -15,42 +15,61 @@ let backend = 'webgpu';
 const send = data => self.postMessage(data);
 function formatErr(e){return String(e?.message || e || 'Unknown model error').slice(0,280)}
 async function load(){
-  if(generator) return generator;
-  if(loadingPromise) return loadingPromise;
+  if(generator && activeTier===tier)return generator;
+  if(generator && activeTier!==tier)throw Error('AI model changed. Reload the page or select Load AI to switch models.');
+  if(loadingPromise)return loadingPromise;
   loadingPromise=(async()=>{
-    const order=[tier];
-    let lastError;
-    for(const choice of order){
-      const model=MODELS[choice];
-      try {
-        send({type:'status',message:`Loading ${model.label} (first visit downloads model files)…`});
-        let adapterSupportsF16=false;
-        if(backend==='webgpu'){
-          const adapter=await navigator.gpu?.requestAdapter({powerPreference:'high-performance'});
-          if(!adapter)throw Error('No compatible WebGPU adapter. Try CPU compatibility mode or enable hardware acceleration.');
-          adapterSupportsF16=adapter.features?.has('shader-f16')||false;
-          send({type:'status',message:model.label+' · GPU '+(adapterSupportsF16?'supports fp16':'using universal q4')});
-        }
-        // Smart can use q4f16 when shader-f16 is supported; this keeps GPU activations
-        // compact. Fall back to the supported q4 format when it is not.
-        const dtype=backend==='webgpu'&&choice==='smart'&&adapterSupportsF16?'q4f16':'q4';
-
-        const pipe=await pipeline('text-generation', model.id, {
-          device:backend==='cpu'?'wasm':'webgpu',dtype,
-          progress_callback:info=>{
-            if(info.status==='progress'&&Number.isFinite(info.progress))
-              send({type:'status',message:`${model.label}: ${Math.round(info.progress)}% downloaded`});
-          }
-        });
-        generator=pipe;activeTier=choice;
-        send({type:'ready',tier:choice,label:model.label + (backend==='cpu'?' (CPU)':' (GPU)')});
-        return pipe;
-      }catch(err){
-        lastError=err;
-        send({type:'status',message:`${model.label} unavailable: ${formatErr(err)} — select another model or try Chrome/Edge after restarting your browser`});
+    const choice=tier, model=MODELS[choice];
+    try{
+      send({type:'status',message:`Loading ${model.label} · first visit may download model weights…`});
+      if(choice==='smart'){
+        // This deliberately bypasses ONNX Runtime, which crashes in the user's browser.
+        // WebLLM is WebGPU-only. Do NOT try to load Smart through the broken ONNX CPU path.
+        if(backend!=='webgpu')throw Error('Smart uses WebLLM and requires GPU. Choose GPU processing, or use Light on CPU.');
+        const adapter=await navigator.gpu?.requestAdapter();
+        if(!adapter)throw Error('WebGPU is unavailable. Try Chrome or Edge with hardware acceleration enabled.');
+        const hasF16=adapter.features?.has('shader-f16')===true;
+        const modelId=hasF16?'Qwen2.5-1.5B-Instruct-q4f16_1-MLC':'Qwen2.5-1.5B-Instruct-q4f32_1-MLC';
+        send({type:'status',message:'Smart: loading WebLLM engine ('+(hasF16?'16-bit':'32-bit')+' GPU compute)…'});
+        const webllm=await import('https://esm.run/@mlc-ai/web-llm@0.2.87');
+        const available=webllm.prebuiltAppConfig?.model_list?.some(x=>x.model_id===modelId);
+        if(!available)throw Error('WebLLM does not list '+modelId+' in its installed model catalog.');
+        const engine=await webllm.CreateMLCEngine(modelId,{
+          initProgressCallback:progress=>send({type:'status',message:'Smart AI: '+String(progress?.text||'Loading model…').slice(0,135)})
+        },{context_window_size:2048});
+        // Adapter keeps both model engines on the same existing crafting/target interface.
+        generator=async(messages,options={})=>{
+          const response=await engine.chat.completions.create({
+            messages,
+            max_tokens:Math.min(280,Math.max(8,Number(options.max_new_tokens)||48)),
+            temperature:options.do_sample?Number(options.temperature)||0.7:0,
+            stream:false
+          });
+          return [{generated_text:String(response.choices?.[0]?.message?.content||'')}];
+        };
+        activeTier=choice;
+        send({type:'ready',tier:choice,label:model.label+' · WebLLM GPU'});
+        return generator;
       }
+      // Keep the existing working Light model on Transformers.js/ONNX.
+      if(backend==='webgpu' && !await navigator.gpu?.requestAdapter()){
+        throw Error('WebGPU unavailable. Choose CPU compatibility mode for Light.');
+      }
+      const pipe=await pipeline('text-generation',model.id,{
+        device:backend==='cpu'?'wasm':'webgpu',
+        dtype:'q4',
+        progress_callback:info=>{
+          if(info.status==='progress'&&Number.isFinite(info.progress))
+            send({type:'status',message:`${model.label}: ${Math.round(info.progress)}% downloaded`});
+        }
+      });
+      generator=pipe;activeTier=choice;
+      send({type:'ready',tier:choice,label:model.label+(backend==='cpu'?' · CPU':' · GPU')});
+      return pipe;
+    }catch(err){
+      send({type:'status',message:`${model.label} failed: ${formatErr(err)}`});
+      throw new Error(`${model.label} could not load: ${formatErr(err)}`);
     }
-    throw new Error('Could not load a browser model: '+formatErr(lastError));
   })();
   try{return await loadingPromise}finally{loadingPromise=null}
 }
