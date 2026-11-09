@@ -27,7 +27,7 @@ async function aiCategoryTargets(category,difficulty,count){
  }catch{return []}
 }
 function scores(room){const result={};for(const id of room.players)result[id]=room.owners.filter(owner=>owner===id).length;return result}
-function roomView(room){return {code:room.code,host:room.host,phase:room.phase,mode:room.mode,size:room.size,board:room.board,owners:room.owners,round:room.round,target:room.target,players:[...room.players].map(id=>({id,name:players.get(id)?.name||'Player',count:players.get(id)?.bank.size||0,score:room.owners.filter(owner=>owner===id).length,color:colors[[...room.players].indexOf(id)%colors.length]})),winner:room.winner,winningIds:room.winningIds||[],winReason:room.winReason||'',category:room.category||'',difficulty:room.difficulty||'medium',duration:room.duration||90,endsAt:room.endsAt||null,submissions:room.submissions||{},battle:room.battle||null}}
+function roomView(room){return {code:room.code,host:room.host,phase:room.phase,mode:room.mode,size:room.size,board:room.board,owners:room.owners,round:room.round,target:room.target,players:[...room.players].map(id=>({id,name:players.get(id)?.name||'Player',count:players.get(id)?.bank.size||0,score:room.owners.filter(owner=>owner===id).length,color:colors[[...room.players].indexOf(id)%colors.length]})),winner:room.winner,winningIds:room.winningIds||[],winReason:room.winReason||'',category:room.category||'',difficulty:room.difficulty||'medium',duration:room.duration||90,endsAt:room.endsAt||null,submissions:room.submissions||{},battle:room.battle||null,preview:room.phase==='preparing'?room.preview||null:null}}
 function emitRoom(room){io.to(room.code).emit('room',roomView(room))}
 function leave(socket){const p=players.get(socket.id);if(!p?.room)return;const room=rooms.get(p.room);socket.leave(p.room);p.room=null;if(!room)return;room.players.delete(socket.id);if(room.submissions)delete room.submissions[socket.id];if(!room.players.size){rooms.delete(room.code);return}if(room.host===socket.id)room.host=[...room.players][0];emitRoom(room)}
 function ackError(cb,msg){cb?.({ok:false,error:msg})}
@@ -44,16 +44,48 @@ socket.on('name',name=>{const p=players.get(socket.id);if(!p)return;p.name=Strin
 socket.on('create',(_data,cb)=>{leave(socket);let code;do{code=randomBytes(4).toString('hex').slice(0,6).toUpperCase()}while(rooms.has(code));const room={code,host:socket.id,players:new Set([socket.id]),phase:'waiting',mode:'word',size:3,board:[],owners:[],round:0,target:null,winner:null,winningIds:[],winReason:'',category:'',difficulty:'medium',duration:90,endsAt:null,submissions:{},battle:null};rooms.set(code,room);players.get(socket.id).room=code;socket.join(code);emitRoom(room);cb?.({ok:true,code})});
 socket.on('join',(raw,cb)=>{const code=String(raw||'').trim().toUpperCase(),room=rooms.get(code);if(!room)return ackError(cb,'Lobby not found');if(room.phase==='racing')return ackError(cb,'Race already started');leave(socket);room.players.add(socket.id);players.get(socket.id).room=code;socket.join(code);emitRoom(room);cb?.({ok:true,code})});
 socket.on('leave',()=>{leave(socket);socket.emit('room',null)});
-socket.on('prepareStart',(_data,cb)=>{
+socket.on('prepareStart',(data,cb)=>{
  const p=players.get(socket.id),room=rooms.get(p?.room);
  if(!room||room.host!==socket.id)return ackError(cb,'Only the host can prepare a round');
- if(room.phase==='racing')return ackError(cb,'Round already underway');
- room.phase='preparing';emitRoom(room);cb?.({ok:true});
+ if(room.phase==='racing'||room.phase==='preparing')return ackError(cb,'Round already underway');
+ const mode=data?.mode==='bingo'?'bingo':'word',size=Number(data?.size)||3;
+ if(mode==='bingo'&&![3,4,5].includes(size))return ackError(cb,'Invalid bingo size');
+ let initial=[];
+ try{
+  if(mode==='bingo'){
+   const custom=parseTargets(data?.custom||'');
+   if(custom.length>size*size)return ackError(cb,'Too many custom targets');
+   initial=data?.category?.trim()?custom:makeBoard(size,custom,'',data?.difficulty||'medium');
+  }
+ }catch(e){return ackError(cb,e.message)}
+ room.phase='preparing';room.preview={mode,size,words:[],total:mode==='bingo'?size*size:1,category:String(data?.category||'').slice(0,45)};
+ const token=room.preview;
+ emitRoom(room);cb?.({ok:true});
+ if(initial.length){
+  // Reveal words one by one in the SAME order used when the race starts.
+  initial.forEach((word,i)=>setTimeout(()=>{
+   if(room.phase!=='preparing'||room.preview!==token)return;
+   if(!token.words.some(x=>normalize(x)===normalize(word)))token.words.push(word);
+   emitRoom(room);
+  },i*125+100));
+ }
+});
+socket.on('preparationProgress',(data,cb)=>{
+ const p=players.get(socket.id),room=rooms.get(p?.room);
+ if(!room||room.host!==socket.id||room.phase!=='preparing'||!room.preview)return ackError(cb,'No round is being prepared');
+ try{
+  const words=parseTargets(data?.words||[]);
+  for(const word of words){
+   if(room.preview.words.length>=room.preview.total)break;
+   if(!room.preview.words.some(x=>normalize(x)===normalize(word)))room.preview.words.push(word);
+  }
+  emitRoom(room);cb?.({ok:true,count:room.preview.words.length});
+ }catch(e){ackError(cb,e.message)}
 });
 socket.on('cancelPreparation',(_data,cb)=>{
  const p=players.get(socket.id),room=rooms.get(p?.room);
  if(room&&room.host===socket.id&&room.phase==='preparing'){
-  room.phase='waiting';emitRoom(room);cb?.({ok:true});
+  room.phase='waiting';room.preview=null;emitRoom(room);cb?.({ok:true});
  }
 });
 socket.on('start',async(data,cb)=>{const p=players.get(socket.id),room=rooms.get(p?.room);if(!room||room.host!==socket.id)return ackError(cb,'Only the host can start');if(room.phase==='racing')return ackError(cb,'Race already underway');const mode=['bingo','battle'].includes(data?.mode)?data.mode:'word';const difficulty=['easy','medium','hard'].includes(data?.difficulty)?data.difficulty:'medium';const category=String(data?.category||'').trim().slice(0,45);const duration=Math.max(15,Math.min(900,Number(data?.duration)||90));let target=null,board=[],size=3;try{const needsTheme=Boolean(category)&&mode!=='battle'&&(mode==='bingo'||!String(data?.target||'').trim());
@@ -61,7 +93,7 @@ socket.on('start',async(data,cb)=>{const p=players.get(socket.id),room=rooms.get
  if(needsTheme&&generated.some(w=>/\b(characters?|scenes?|items?|things?|concepts?|objects?|genre|theme|elements?|locations?)\b/i.test(w)))return ackError(cb,'Targets must be specific craftable words, not categories like Characters or Scenes.');
  const requested=mode==='bingo'?parseTargets(data?.custom||''):[];
  const remaining=mode==='bingo'?Math.max(0,Number(data?.size)**2-requested.length):1;
- if(needsTheme&&generated.length<remaining)return ackError(cb,'The themed AI targets are not ready. Prepare them before starting.');if(mode==='word'){target=String(data?.target||'').trim().replace(/\s+/g,' ').slice(0,55)||generated[0]||pickTargets(category,difficulty,1)[0]||targets[randomInt(targets.length)];if(base.some(x=>normalize(x)===normalize(target)))return ackError(cb,'Choose a target beyond the starting elements')}else if(mode==='bingo'){size=Number(data?.size);if(![3,4,5].includes(size))return ackError(cb,'Choose 3×3, 4×4 or 5×5');board=makeBoard(size,[...requested,...generated].slice(0,size*size),category,difficulty)}}catch(e){return ackError(cb,e.message)}room.round++;room.category=category;room.difficulty=difficulty;room.duration=duration;room.endsAt=mode==='battle'?Date.now()+duration*1000:null;room.submissions={};room.battle=null;room.mode=mode;room.target=target;room.size=size;room.board=board;room.owners=board.map(()=>null);room.phase='racing';room.winner=null;room.winningIds=[];room.winReason='';for(const id of room.players){const player=players.get(id);if(!player)continue;player.bank=new Set(base);io.to(id).emit('bank',base);io.to(id).emit('discovery',{message:'New race! Your discoveries are reset.'})}emitRoom(room);cb?.({ok:true});if(mode==='battle'){const round=room.round;setTimeout(()=>resolveBattle(room,round),duration*1000)}});
+ if(needsTheme&&generated.length<remaining)return ackError(cb,'The themed AI targets are not ready. Prepare them before starting.');if(mode==='word'){target=String(data?.target||'').trim().replace(/\s+/g,' ').slice(0,55)||generated[0]||pickTargets(category,difficulty,1)[0]||targets[randomInt(targets.length)];if(base.some(x=>normalize(x)===normalize(target)))return ackError(cb,'Choose a target beyond the starting elements')}else if(mode==='bingo'){size=Number(data?.size);if(![3,4,5].includes(size))return ackError(cb,'Choose 3×3, 4×4 or 5×5');board=room.preview?.mode==='bingo'&&room.preview.size===size&&room.preview.words.length===size*size?[...room.preview.words]:makeBoard(size,[...requested,...generated].slice(0,size*size),category,difficulty)}}catch(e){return ackError(cb,e.message)}room.round++;room.category=category;room.difficulty=difficulty;room.duration=duration;room.endsAt=mode==='battle'?Date.now()+duration*1000:null;room.submissions={};room.battle=null;room.mode=mode;room.target=target;room.size=size;room.board=board;room.owners=board.map(()=>null);room.phase='racing';room.preview=null;room.winner=null;room.winningIds=[];room.winReason='';for(const id of room.players){const player=players.get(id);if(!player)continue;player.bank=new Set(base);io.to(id).emit('bank',base);io.to(id).emit('discovery',{message:'New race! Your discoveries are reset.'})}emitRoom(room);cb?.({ok:true});if(mode==='battle'){const round=room.round;setTimeout(()=>resolveBattle(room,round),duration*1000)}});
 socket.on('submitBattle',(raw,cb)=>{const p=players.get(socket.id),room=rooms.get(p?.room);if(!room||room.mode!=='battle'||room.phase!=='racing')return ackError(cb,'No active battle');if(Date.now()>room.endsAt)return ackError(cb,'Time is up');const word=String(raw||'').trim();if(!p.bank.has(word)||base.includes(word))return ackError(cb,'Discover an item first');room.submissions[socket.id]=word;emitRoom(room);cb?.({ok:true})});
 async function commitCraft(p,room,round,crafted,cb){
 const {word:result,emoji}=crafted;if(!players.has(socket.id)||players.get(socket.id)!==p)return ackError(cb,'Player disconnected');const current=rooms.get(p.room);if(room&&(current!==room||current.round!==round||current.phase!=='racing'))return ackError(cb,'The round changed while crafting. Try in the next race.');const fresh=!p.bank.has(result);p.bank.add(result);socket.emit('bank',[...p.bank]);io.emit('emoji',{word:result,emoji});cb?.({ok:true,result,emoji,fresh});if(!current)return;const winKey=normalize(result);if(current.mode==='word'&&winKey===normalize(current.target)){finish(current,[socket.id],`Discovered ${current.target}!`);return}if(current.mode==='battle'){emitRoom(current);return}if(current.mode==='bingo'){const index=current.board.findIndex((word,i)=>normalize(word)===winKey&&current.owners[i]===null);if(index!==-1){current.owners[index]=socket.id;io.to(current.code).emit('claim',{index,word:current.board[index],player:p.name,id:socket.id});const reason=checkBingo(current,socket.id);if(reason){finish(current,[socket.id],reason);return}if(current.owners.every(x=>x!==null)){const totals=scores(current),top=Math.max(...Object.values(totals));finish(current,Object.keys(totals).filter(id=>totals[id]===top),`Board filled — highest score: ${top}`);return}}}emitRoom(current) }
