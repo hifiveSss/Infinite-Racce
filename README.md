@@ -81,3 +81,10 @@ The model weights are downloaded to each visitor's browser (not bundled inside t
 - Browser WebGPU, video-memory, model CDN access and the first model download remain hardware/network prerequisites.
 - Models are loaded from Hugging Face; no user install or paid API key is required.
 - Live model inference was NOT tested in this environment.
+
+## Browser AI compatibility update
+
+- Browser model files are cached when permitted by storage settings. The model must still load into GPU/CPU memory each new tab/session; usually it will not need to download again. Private browsing, cache eviction, and model changes can cause repeat downloads.
+- GPU mode uses the official Transformers.js `q4` quantisation for both Qwen2.5 models.
+- CPU compatibility mode uses the Light 0.5B model, the WASM runtime, and a single thread to work without WebGPU. CPU generation may be very slow, particularly on phones.
+- A model-load error is surfaced in the UI and the worker is cleared so the user can retry. This does not guarantee all browsers and GPU drivers can run local inference.
