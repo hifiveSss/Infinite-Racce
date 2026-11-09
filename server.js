@@ -7,61 +7,92 @@ const app=express(),server=http.createServer(app),io=new Server(server);
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:Boolean(process.env.GEMINI_API_KEY),...recipeStats()}));
 
-/* Free internet-backed context for unfamiliar categories. No API key or billing.
-   Wikipedia's public search index supplies citations/related topic names, not infallible truth.
-   Always constrain returned text length and treat it as untrusted evidence, not commands. */
-const topicResearchCache=new Map();
-const cleanWiki=html=>String(html||'').replace(/<[^>]*>/g,' ').replace(/&quot;/g,'"').replace(/&#039;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
-async function researchTopic(topic){
- const name=String(topic||'').replace(/[^a-zA-Z0-9 '&:.-]/g,' ').replace(/\s+/g,' ').trim().slice(0,70);
- if(name.length<2)throw Error('Enter a category');
- const key=name.toLowerCase(),old=topicResearchCache.get(key);
- if(old&&Date.now()-old.at<1800000)return old.data;
- const queries=[name, name+' game', name+' characters locations'];
- const batches=await Promise.allSettled(queries.map(async q=>{
-  const params=new URLSearchParams({action:'query',list:'search',srsearch:q,srlimit:'12',srprop:'snippet',format:'json',origin:'*'});
-  const res=await fetch('https://en.wikipedia.org/w/api.php?'+params,{signal:AbortSignal.timeout(7500),headers:{'User-Agent':'InfiniteRace/1.0 (game research)'}});
-  if(!res.ok)throw Error('Wikipedia HTTP '+res.status);
-  const json=await res.json();
-  return (json.query?.search||[]).map(p=>({title:String(p.title||'').slice(0,95),description:cleanWiki(p.snippet).slice(0,240),url:'https://en.wikipedia.org/wiki/'+encodeURIComponent(String(p.title||'').replace(/ /g,'_'))}));
- }));
- const seen=new Set(),pages=[];
- for(const b of batches)if(b.status==='fulfilled')for(const p of b.value){
-  if(!p.title||seen.has(p.title.toLowerCase()))continue;
-  seen.add(p.title.toLowerCase());pages.push(p);
+/* Internet research for AI crafting and bingo.
+ Public no-key sources: Bing RSS search, Wikipedia, Wikidata.
+ Optional SEARCH_API_URL: owner's own SearXNG instance with JSON enabled.
+ Results are short untrusted data snippets only; never instructions.
+ These services may rate-limit or become unavailable. */
+const researchCache=new Map(),craftResearchCache=new Map();
+const plain=html=>String(html||'').replace(/<!\[CDATA\[|\]\]>/g,'').replace(/<[^>]*>/g,' ').replace(/&quot;/g,'"').replace(/&#0?39;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim();
+const cleanName=x=>String(x||'').replace(/[^a-zA-Z0-9 '&:.+\-]/g,' ').replace(/\s+/g,' ').trim().slice(0,70);
+async function findBing(query){
+ const url='https://www.bing.com/search?'+new URLSearchParams({q:query,format:'rss',setlang:'en'});
+ const r=await fetch(url,{signal:AbortSignal.timeout(6800),headers:{'User-Agent':'Mozilla/5.0 (compatible; InfiniteRaceBot/1.0)','Accept':'application/rss+xml,application/xml,text/xml'}});
+ if(!r.ok)throw Error('Bing search unavailable: '+r.status);
+ const raw=(await r.text()).slice(0,250000);
+ return [...raw.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)].slice(0,13).map((m)=>{
+   const field=k=>m[1].match(new RegExp('<'+k+'[^>]*>([\\s\\S]*?)<\\/'+k+'>','i'))?.[1]||'';
+   return {title:plain(field('title')).slice(0,105),description:plain(field('description')).slice(0,330),url:plain(field('link')).slice(0,400),source:'Web search'};
+ }).filter(p=>p.title&&/^https?:\/\//.test(p.url));
+}
+async function findWiki(query){
+ const params=new URLSearchParams({action:'query',list:'search',srsearch:query,srlimit:'14',srprop:'snippet',format:'json'});
+ const r=await fetch('https://en.wikipedia.org/w/api.php?'+params,{signal:AbortSignal.timeout(6000),headers:{'User-Agent':'InfiniteRace/1.0 (game topic research)'}});
+ if(!r.ok)throw Error('Wikipedia unavailable');
+ const j=await r.json();
+ return (j.query?.search||[]).map(p=>({title:plain(p.title).slice(0,105),description:plain(p.snippet).slice(0,290),url:'https://en.wikipedia.org/wiki/'+encodeURIComponent(p.title.replace(/ /g,'_')),source:'Wikipedia'}));
+}
+async function findWikidata(query){
+ const params=new URLSearchParams({action:'wbsearchentities',search:query,language:'en',uselang:'en',limit:'15',format:'json'});
+ const r=await fetch('https://www.wikidata.org/w/api.php?'+params,{signal:AbortSignal.timeout(6000),headers:{'User-Agent':'InfiniteRace/1.0 (game topic research)'}});
+ if(!r.ok)throw Error('Wikidata unavailable');
+ const j=await r.json();
+ return (j.search||[]).map(p=>({title:plain(p.label).slice(0,105),description:plain(p.description).slice(0,290),url:'https://www.wikidata.org/wiki/'+encodeURIComponent(p.id),source:'Wikidata'}));
+}
+async function findSearx(query){
+ const base=process.env.SEARCH_API_URL?.trim();
+ if(!base)return [];
+ const u=new URL(base);
+ if(u.protocol!=='https:')throw Error('SEARCH_API_URL must be HTTPS');
+ u.pathname=u.pathname.replace(/\/$/,'')+'/search';u.search=new URLSearchParams({q:query,format:'json',language:'en'}).toString();
+ const r=await fetch(u,{signal:AbortSignal.timeout(6000)});
+ if(!r.ok)throw Error('SearXNG unavailable');
+ const j=await r.json();
+ return (j.results||[]).slice(0,16).map(x=>({title:plain(x.title).slice(0,105),description:plain(x.content).slice(0,290),url:String(x.url||'').slice(0,400),source:'SearXNG'})).filter(x=>x.title&&/^https?:\/\//.test(x.url));
+}
+async function multiSearch(query){
+ const results=await Promise.allSettled([findBing(query),findWiki(query),findWikidata(query),findSearx(query)]);
+ return results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+}
+function uniquePages(pages,count=80){
+ const seen=new Set(),out=[];
+ for(const p of pages){
+  const k=(p.title||'').toLowerCase();
+  if(!k||seen.has(k))continue;
+  seen.add(k);out.push(p);
+  if(out.length>=count)break;
  }
- const data={topic:name,source:'Wikipedia',pages:pages.slice(0,30),available:pages.length>0};
- if(!data.available)throw Error('No internet references found for this topic. Try a more specific name or custom bingo targets.');
- topicResearchCache.set(key,{at:Date.now(),data});
- if(topicResearchCache.size>120)topicResearchCache.delete(topicResearchCache.keys().next().value);
+ return out;
+}
+async function researchTopic(topic){
+ const name=cleanName(topic);if(name.length<2)throw Error('Enter a category');
+ const key='topic:'+name.toLowerCase(),cached=researchCache.get(key);
+ if(cached&&Date.now()-cached.at<1800000)return cached.data;
+ const queries=[name, name+' characters weapons locations',name+' items levels lore'];
+ const lookups=await Promise.allSettled(queries.map(multiSearch));
+ const pages=uniquePages(lookups.flatMap(r=>r.status==='fulfilled'?r.value:[]));
+ if(!pages.length)throw Error('Web research sources are temporarily unavailable. Try again.');
+ const data={topic:name,source:[...new Set(pages.map(p=>p.source))].join(', '),pages,available:true};
+ researchCache.set(key,{at:Date.now(),data});
+ if(researchCache.size>90)researchCache.delete(researchCache.keys().next().value);
  return data;
 }
-/* Lightweight factual hints for unfamiliar ingredient names.
-   Deliberately limited to two short Wikipedia searches per pair. */
-const craftResearchCache=new Map();
-app.get('/api/craft-research',async(req,res)=>{
- const terms=[req.query.a,req.query.b].map(v=>String(v||'').replace(/[^a-zA-Z0-9 '\-]/g,' ').trim().slice(0,55));
- if(terms.some(v=>v.length<2))return res.json({hints:[]});
- const key=terms.map(v=>v.toLowerCase()).sort().join('|'),prior=craftResearchCache.get(key);
- if(prior&&Date.now()-prior.at<1800000)return res.json({hints:prior.hints});
- const replies=await Promise.allSettled(terms.map(async term=>{
-  const params=new URLSearchParams({action:'query',list:'search',srsearch:term,srlimit:'2',srprop:'snippet',format:'json',origin:'*'});
-  const response=await fetch('https://en.wikipedia.org/w/api.php?'+params,{signal:AbortSignal.timeout(4000),headers:{'User-Agent':'InfiniteRace/1.0 (word-combination research)'}});
-  if(!response.ok)return [];
-  const json=await response.json();
-  return (json.query?.search||[]).map(d=>({term,title:String(d.title||'').slice(0,65),description:cleanWiki(d.snippet).slice(0,160)}));
- }));
- const hints=replies.flatMap(r=>r.status==='fulfilled'?r.value:[]).slice(0,4);
- craftResearchCache.set(key,{at:Date.now(),hints});
- if(craftResearchCache.size>300)craftResearchCache.delete(craftResearchCache.keys().next().value);
- res.json({hints,source:'Wikipedia'});
-});
 app.get('/api/topic-research',async(req,res)=>{
- try{
-  const topic=String(req.query.topic||'').slice(0,70);
-  const data=await researchTopic(topic);
-  res.json(data);
- }catch(e){res.status(503).json({error:e.message||'Internet lookup unavailable'})}
+ try{res.json(await researchTopic(req.query.topic))}
+ catch(e){res.status(503).json({error:e.message||'Research temporarily unavailable'})}
+});
+app.get('/api/craft-research',async(req,res)=>{
+ const terms=[cleanName(req.query.a),cleanName(req.query.b)];
+ if(terms.some(s=>s.length<2))return res.json({hints:[]});
+ const key=terms.map(x=>x.toLowerCase()).sort().join('|'),prior=craftResearchCache.get(key);
+ if(prior&&Date.now()-prior.at<1800000)return res.json(prior.data);
+ const queries=[...terms,terms[0]+' '+terms[1]];
+ const lookups=await Promise.allSettled(queries.map(multiSearch));
+ const pages=uniquePages(lookups.flatMap(r=>r.status==='fulfilled'?r.value:[]),12);
+ const data={hints:pages.map(p=>({title:p.title,description:p.description,source:p.source})),sources:[...new Set(pages.map(p=>p.source))]};
+ craftResearchCache.set(key,{at:Date.now(),data});
+ if(craftResearchCache.size>200)craftResearchCache.delete(craftResearchCache.keys().next().value);
+ res.json(data);
 });
 const rooms=new Map(),players=new Map();
 const localLimits=new Map();
