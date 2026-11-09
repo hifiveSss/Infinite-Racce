@@ -83,18 +83,27 @@ function parse(text,a,b){
   if([a,b,`${a} ${b}`,`${b} ${a}`,`${a} and ${b}`,`${b} and ${a}`].some(v=>norm(v)===norm(word)))throw Error('AI repeated an ingredient or joined the inputs');
   return {word,emoji:String(obj?.emoji||'✨').trim().slice(0,12)||'✨'};
 }
+async function craftHints(a,b){
+ try{
+  const response=await fetch('/api/craft-research?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b),{signal:AbortSignal.timeout(3500)});
+  if(!response.ok)return '';
+  const data=await response.json();
+  return (data.hints||[]).slice(0,4).map(h=>h.title+': '+h.description).join('; ').slice(0,460);
+ }catch{return ''}
+}
 async function combine(a,b){
-  const model=await load();
+  // Load the model and look up unfamiliar ingredients simultaneously.
+  const [model,hints]=await Promise.all([load(),craftHints(a,b)]);
   // A short, direct instruction gives small models much more reliable results than
   // long system messages and example chat turns (which can get echoed).
   const messages=[
     {role:'system',content:'You combine two things into ONE familiar, meaningful thing. Use science or a clever shared connection. Respond ONLY with the result name, 1 to 3 words. Never explain. Never just join the two input names.'},
-    {role:'user',content:`Combine ${a} + ${b}. Answer with a single real noun:`}
+    {role:'user',content:`Combine ${a} + ${b}. ${hints?'Web facts: '+hints+'. ':''}Answer with a single real noun that meaningfully connects the inputs:`}
   ];
   let last;
   for(let attempt=0;attempt<3;attempt++){
     const prompt=attempt===0?messages:[
-      {role:'user',content:`Give ONLY ONE short recognizable noun resulting from ${a} combined with ${b}. No sentence, no JSON, no labels. Example: Water + Fire -> Steam. Answer:`}
+      {role:'user',content:`Give ONLY ONE short recognizable noun resulting from ${a} combined with ${b}. No sentence, no JSON, no labels. Use a physically plausible or clever real-world connection. Example: Water + Fire -> Steam. Answer:`}
     ];
     const output=await model(prompt,{max_new_tokens:attempt?36:42,do_sample:attempt>0,temperature:attempt?0.7:undefined,return_full_text:false});
     try{return parse(generatedText(output),a,b)}catch(err){last=err}
