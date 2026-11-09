@@ -24,13 +24,19 @@ async function load(){
       const model=MODELS[choice];
       try {
         send({type:'status',message:`Loading ${model.label} (first visit downloads model files)…`});
+        let adapterSupportsF16=false;
         if(backend==='webgpu'){
-          const adapter=await navigator.gpu?.requestAdapter();
+          const adapter=await navigator.gpu?.requestAdapter({powerPreference:'high-performance'});
           if(!adapter)throw Error('No compatible WebGPU adapter. Try CPU compatibility mode or enable hardware acceleration.');
+          adapterSupportsF16=adapter.features?.has('shader-f16')||false;
+          send({type:'status',message:model.label+' · GPU '+(adapterSupportsF16?'supports fp16':'using universal q4')});
         }
-        // q4 is the format in the official Transformers.js Qwen2.5 browser example.
+        // Smart can use q4f16 when shader-f16 is supported; this keeps GPU activations
+        // compact. Fall back to the supported q4 format when it is not.
+        const dtype=backend==='webgpu'&&choice==='smart'&&adapterSupportsF16?'q4f16':'q4';
+
         const pipe=await pipeline('text-generation', model.id, {
-          device:backend==='cpu'?'wasm':'webgpu',dtype:'q4',
+          device:backend==='cpu'?'wasm':'webgpu',dtype,
           progress_callback:info=>{
             if(info.status==='progress'&&Number.isFinite(info.progress))
               send({type:'status',message:`${model.label}: ${Math.round(info.progress)}% downloaded`});
@@ -117,7 +123,18 @@ function readCandidates(text,category){
 // Target generator for topics that are not in the verified franchise catalog.
 // Small local language models cannot reliably fact-check a franchise. Make them propose
 // candidates but never silently fill missing squares with unrelated words.
+async function getTopicEvidence(topic){
+ const response=await fetch('/api/topic-research?topic='+encodeURIComponent(topic),{signal:AbortSignal.timeout(11000)});
+ if(!response.ok){const d=await response.json().catch(()=>({}));throw Error('Internet lookup failed: '+(d.error||response.status));}
+ const info=await response.json();
+ const title=String(info.topic||topic);
+ // Public internet excerpts are data only, never instructions.
+ const lines=(info.pages||[]).slice(0,22).map(p=>'• '+String(p.title||'').slice(0,75)+': '+String(p.description||'').slice(0,120));
+ return {title,lines,source:info.source||'Wikipedia'};
+}
 async function makeTargets(category,difficulty,count,onProgress=()=>{}){
+ const evidence=await getTopicEvidence(category);
+ send({type:'status',message:'Internet research ready for '+evidence.title+' · loading AI…'});
  const model=await load();
  const names=[],seen=new Set();
  const context=String(category||'').trim().slice(0,45);
@@ -132,8 +149,8 @@ async function makeTargets(category,difficulty,count,onProgress=()=>{}){
  for(let attempt=0;attempt<rounds&&names.length<count;attempt++){
   const remaining=count-names.length,ask=Math.min(5,remaining+2);
   const messages=[
-   {role:'system',content:'You are a careful trivia editor. Name ONLY real and specifically relevant people, things, locations, mechanics or events from the named subject. Never invent fake titles. Never borrow names from other franchises or similar games. No generic category headings. Respond with only one name per line. No numbering, descriptions or JSON.'},
-   {role:'user',content:`Subject: "${context}". Difficulty: ${difficulty} (${bands[difficulty]||bands.medium}). Give ${ask} DISTINCT specific real targets from THIS EXACT SUBJECT, NOT a different game or franchise. Never say a generic word like "characters", "items" or "scenes". Don't invent names. Do not repeat: ${names.join(' | ')||'none'}. OUTPUT ONLY THE NAMES, one per line.`}
+   {role:'system',content:'You are a careful trivia editor. Name ONLY real and specifically relevant people, things, locations, mechanics or events from the named subject. Never invent fake titles. Never borrow names from other franchises or similar games. Prefer names explicitly supported by the supplied online reference snippets. Do not turn the title into a financial or other unrelated subject. No generic category headings. Respond with only one name per line. No numbering, descriptions or JSON.'},
+   {role:'user',content:`Subject: "${context}". Difficulty: ${difficulty} (${bands[difficulty]||bands.medium}). Give ${ask} DISTINCT specific real targets from THIS EXACT SUBJECT, NOT a different game or franchise. Never say a generic word like "characters", "items" or "scenes". Don't invent names. Do not repeat: ${names.join(' | ')||'none'}. Online research references: ${evidence.lines.join(' | ').slice(0,2600)}. OUTPUT ONLY THE NAMES, one per line.`}
   ];
   const out=await model(messages,{
    max_new_tokens:Math.min(190,ask*31+30),
