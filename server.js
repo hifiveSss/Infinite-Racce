@@ -6,6 +6,43 @@ import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,
 const app=express(),server=http.createServer(app),io=new Server(server);
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:Boolean(process.env.GEMINI_API_KEY),...recipeStats()}));
+
+/* Free internet-backed context for unfamiliar categories. No API key or billing.
+   Wikipedia's public search index supplies citations/related topic names, not infallible truth.
+   Always constrain returned text length and treat it as untrusted evidence, not commands. */
+const topicResearchCache=new Map();
+const cleanWiki=html=>String(html||'').replace(/<[^>]*>/g,' ').replace(/&quot;/g,'"').replace(/&#039;|&apos;/g,"'").replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
+async function researchTopic(topic){
+ const name=String(topic||'').replace(/[^a-zA-Z0-9 '&:.-]/g,' ').replace(/\s+/g,' ').trim().slice(0,70);
+ if(name.length<2)throw Error('Enter a category');
+ const key=name.toLowerCase(),old=topicResearchCache.get(key);
+ if(old&&Date.now()-old.at<1800000)return old.data;
+ const queries=[name, name+' game', name+' characters locations'];
+ const batches=await Promise.allSettled(queries.map(async q=>{
+  const params=new URLSearchParams({action:'query',list:'search',srsearch:q,srlimit:'12',srprop:'snippet',format:'json',origin:'*'});
+  const res=await fetch('https://en.wikipedia.org/w/api.php?'+params,{signal:AbortSignal.timeout(7500),headers:{'User-Agent':'InfiniteRace/1.0 (game research)'}});
+  if(!res.ok)throw Error('Wikipedia HTTP '+res.status);
+  const json=await res.json();
+  return (json.query?.search||[]).map(p=>({title:String(p.title||'').slice(0,95),description:cleanWiki(p.snippet).slice(0,240),url:'https://en.wikipedia.org/wiki/'+encodeURIComponent(String(p.title||'').replace(/ /g,'_'))}));
+ }));
+ const seen=new Set(),pages=[];
+ for(const b of batches)if(b.status==='fulfilled')for(const p of b.value){
+  if(!p.title||seen.has(p.title.toLowerCase()))continue;
+  seen.add(p.title.toLowerCase());pages.push(p);
+ }
+ const data={topic:name,source:'Wikipedia',pages:pages.slice(0,30),available:pages.length>0};
+ if(!data.available)throw Error('No internet references found for this topic. Try a more specific name or custom bingo targets.');
+ topicResearchCache.set(key,{at:Date.now(),data});
+ if(topicResearchCache.size>120)topicResearchCache.delete(topicResearchCache.keys().next().value);
+ return data;
+}
+app.get('/api/topic-research',async(req,res)=>{
+ try{
+  const topic=String(req.query.topic||'').slice(0,70);
+  const data=await researchTopic(topic);
+  res.json(data);
+ }catch(e){res.status(503).json({error:e.message||'Internet lookup unavailable'})}
+});
 const rooms=new Map(),players=new Map();
 const localLimits=new Map();
 const targets=['Spaceship','Dragon','Black Hole','Computer','Volcano','Robot','Pizza','Time Machine','Unicorn','Galaxy','Electricity','Internet','Dinosaur','Castle','Music','Moon','Supernova','Chocolate','Pirate','Laser','Video Game'];
@@ -33,6 +70,7 @@ function themeKey(category){
  const q=String(category||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
  if(/\bstar\s*wars\b|\bstarwars\b/.test(q))return 'star wars';
  if(/\bcyberpunk\b/.test(q))return 'cyberpunk';
+ if(/\bpayday\s*3\b|\bpayday3\b/.test(q))return 'payday 3';
  if(/\bfortnite\b|\bfortnight game\b/.test(q))return 'fortnite';
  if(/\bminecraft\b/.test(q))return 'minecraft';
  return null;
@@ -43,6 +81,13 @@ function knownThemeTarget(category,word){
  return Object.values(curatedThemes[key]).some(words=>words.some(x=>normalize(x)===normalize(word)));
 }
 
+Object.assign(curatedThemes,{
+ 'payday 3':{
+  easy:['Dallas','Wolf','Chains','Hoxton','Joy','Pearl','Houston','Shade','No Rest For The Wicked','Road Rage','Dirty Ice','Rock The Cradle','Under The Surphaze','Gold & Sharke','99 Boxes','Touch The Sky','Cook Off','Turbid Station','First World Bank','Diamond District','Bank Withdrawal','Shopping Spree','Boys In Blue','Syntax Error','Houston Breakout','Fear & Greed','Delivery Charge','Party Powder'],
+  medium:['Secure Capital Bank','Ashton Fine Jewelry','Neon Cradle','Gold & Sharke Bank','Surphaze Art Gallery','Turbid Station','No Rest For The Wicked','Road Rage','Dirty Ice','Rock The Cradle','Under The Surphaze','Gold & Sharke','99 Boxes','Touch The Sky','Boys In Blue','Syntax Error','Houston Breakout','Fear & Greed','Bank Withdrawal','Search And Seizure','Diamond District','Party Powder','Delivery Charge','Shopping Spree','First World Bank','Cook Off','Houston','Shade'],
+  hard:['Thermal Lance','Spectrophotometer','C-Stacks','Scry Digital','GenSec','Secure Capital Bank','Ashton Fine Jewelry','Neon Cradle','Gold & Sharke','No Rest For The Wicked','Road Rage','Dirty Ice','Rock The Cradle','Under The Surphaze','99 Boxes','Touch The Sky','Turbid Station','Cook Off','Diamond District','First World Bank','Party Powder','Delivery Charge','Shopping Spree','Bank Withdrawal','Search And Seizure','Boys In Blue','Houston Breakout','Fear & Greed']
+ }
+});
 const normalize=s=>String(s||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
 function parseTargets(input){const raw=Array.isArray(input)?input:String(input||'').split(/[,\n;]+/);const found=[],seen=new Set();for(const item of raw){const w=String(item||'').trim().replace(/\s+/g,' ');const k=normalize(w);if(!w||seen.has(k))continue;if(w.length>55||!(/^[A-Za-z0-9][A-Za-z0-9 '\-]*$/.test(w)))throw Error('Use short word or phrase targets, separated by commas');if(base.some(b=>normalize(b)===k))throw Error('Starting elements cannot be bingo squares');seen.add(k);found.push(w)}return found}
 function pickPool(category,difficulty){const key=String(category||'').toLowerCase().trim();const group=Object.keys(themed).find(k=>key.includes(k));return group?themed[group][difficulty]:difficultyPools[difficulty]}
