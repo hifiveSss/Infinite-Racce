@@ -219,7 +219,7 @@ try {
   if(typeof v==='string'){
    // Legacy concatenated results are intentionally ignored; they can spoil future AI responses.
    if(items.has(v))recipes.set(k.toLowerCase(),{word:v,emoji:items.get(v)});
-  }else if(v&&typeof v.word==='string'&&typeof v.emoji==='string')recipes.set(k,{word:v.word,emoji:v.emoji});
+  }else if(v&&typeof v.word==='string'&&typeof v.emoji==='string'&&/^[A-Za-z0-9][A-Za-z0-9 '&\-!.]*$/.test(v.word)&&v.word.length<=55)recipes.set(k,{word:v.word,emoji:v.emoji});
  }
  for(const [k,v] of Object.entries(saved.emojis||{}))if(typeof v==='string')items.set(k,v);
 }catch{}
@@ -233,7 +233,7 @@ export function registerLocalCombination(a,b,word,emoji){
  if(recipes.has(k))return recipes.get(k);
  word=String(word||'').trim().replace(/\s+/g,' ');
  emoji=String(emoji||'✨').trim().slice(0,16)||'✨';
- if(badResult(word,a,b)||word.split(' ').length>5||!/^[\p{L}\p{N}][\p{L}\p{N} '&\-!.]*$/u.test(word))throw Error('Local AI gave an invalid result. Try again.');
+ if(badResult(word,a,b)||word.split(' ').length>5||!/^[A-Za-z0-9][A-Za-z0-9 '&\-!.]*$/.test(word))throw Error('Local AI gave an invalid result. Try again.');
  const result={word,emoji};recipes.set(k,result);items.set(word,emoji);persist();return result;
 }
 export function emojiOf(word){return items.get(word)||'✨'}

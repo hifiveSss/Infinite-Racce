@@ -59,24 +59,23 @@ function generatedText(output){
   return String(value?.content||value||'');
 }
 function parse(text,a,b){
-  let cleaned=String(text||'').replace(/<think>[\s\S]*?<\/think>/gi,'').replace(/```(?:json)?/gi,'').replace(/<\|[^>]+\|>/g,'').trim();
-  // Transformers.js may include the prompt before the answer; take its LAST JSON result.
+  let cleaned=String(text||'').replace(/<think>[\s\S]*?<\/think>/gi,'').replace(/<\|[^>]+\|>/g,'').replace(/```(?:json)?/gi,'').trim();
   const objects=[...cleaned.matchAll(/\{[^{}]{2,250}\}/g)];
   let obj=null;
-  for(const item of objects.reverse()){try{const candidate=JSON.parse(item[0]);if(candidate.word||candidate.result||candidate.item){obj=candidate;break;}}catch{}}
+  for(const item of objects.reverse()){try{let v=JSON.parse(item[0]);if(v.word||v.result||v.item){obj=v;break}}catch{}}
   let word=String(obj?.word||obj?.result||obj?.item||'').trim();
   if(!word){
     const lines=cleaned.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
     word=lines.at(-1)||'';
-    word=word.replace(/^(?:assistant|result|answer|item|output)\s*:\s*/i,'').replace(/^["'`]+|["'`]+$/g,'');
+    word=word.replace(/^(?:assistant|result|answer|item|output)\s*:\s*/i,'').replace(/^['"`]+|['"`]+$/g,'');
     word=word.split(/\s+[—–-]\s+|\s+because\s+|\s+is\s+/i)[0];
   }
   word=word.replace(/^[*#\-\s]+/,'').replace(/[.!?]+$/,'').replace(/\s+/g,' ').trim();
-  const emoji=String(obj?.emoji||'✨').trim().slice(0,16)||'✨';
-  if(!word||word.length>55||word.split(' ').length>5||!/^[\p{L}\p{N}][\p{L}\p{N} '&\-!.]*$/u.test(word))throw Error('Unusable AI answer: '+cleaned.slice(-110));
-  const norm=v=>v.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-  if([`${a} ${b}`,`${b} ${a}`,`${a} and ${b}`,`${b} and ${a}`].some(v=>norm(v)===norm(word)))throw Error('AI only joined the two input words');
-  return {word,emoji};
+  // This is an English-language game: never save mixed-script / corrupted model outputs.
+  if(!/^[A-Za-z0-9][A-Za-z0-9 '&\-!.]*$/.test(word)||word.length>44||word.split(' ').length>4||/(.)\1{4,}/i.test(word))throw Error('AI output was garbled: '+cleaned.slice(-70));
+  const norm=v=>v.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  if([a,b,`${a} ${b}`,`${b} ${a}`,`${a} and ${b}`,`${b} and ${a}`].some(v=>norm(v)===norm(word)))throw Error('AI repeated an ingredient or joined the inputs');
+  return {word,emoji:String(obj?.emoji||'✨').trim().slice(0,12)||'✨'};
 }
 async function combine(a,b){
   const model=await load();
@@ -96,19 +95,42 @@ async function combine(a,b){
   }
   throw last||Error('AI did not produce a useful result');
 }
+// Target selection is deliberately stricter than craft results. A category label is NOT a target.
+const vagueTarget=/\b(characters?|scenes?|items?|things?|places?|concepts?|objects?|weapons?|vehicles?|people|technology|world|universe|genre|theme|elements?|creatures?|locations?|ideas?|equipment)\b/i;
+function cleanTarget(v,category){
+ const w=String(v||'').replace(/^[\s*#0-9.)-]+/,'').replace(/^['"`]+|['"`]+$/g,'').replace(/\s+/g,' ').trim();
+ if(w.length<3||w.length>39||w.split(' ').length>4||!/^[A-Za-z0-9][A-Za-z0-9 '&-]*$/.test(w)||vagueTarget.test(w))return null;
+ if(['water','fire','wind','earth'].includes(w.toLowerCase()))return null;
+ if(w.toLowerCase()===category.toLowerCase())return null;
+ return w;
+}
+function readCandidates(text,category){
+ let arr=[];const body=String(text||'').replace(/<\|[^>]+\|>/g,'');
+ for(const match of body.matchAll(/\[[\s\S]*?\]/g)){
+  try{const parsed=JSON.parse(match[0]);if(Array.isArray(parsed))arr.push(...parsed)}catch{}
+ }
+ if(!arr.length){
+  arr=body.split(/\r?\n|[,;]/).map(x=>x.replace(/^\s*[-*0-9.)]+\s*/,'').trim());
+ }
+ return arr.map(x=>cleanTarget(x,category)).filter(Boolean);
+}
 async function makeTargets(category,difficulty,count){
- const model=await load();
- const sample=[
-  {role:'system',content:'Generate diverse real recognizable concepts for a crafting-game challenge. They must be directly related to the requested theme, and avoid generic filler. Reply ONLY a JSON array of short nouns or noun phrases. No explanations.'},
-  {role:'user',content:`Give ${count} DISTINCT ${difficulty} difficulty crafting targets for the theme: ${category}. Easy: common tangible things, medium: recognizable inventions/creatures/places, hard: specialised ideas. JSON array only.`}
- ];
- const out=await model(sample,{max_new_tokens:Math.min(750,Math.max(180,count*25)),do_sample:false,return_full_text:false});
- const txt=generatedText(out),match=txt.match(/\[[\s\S]*?\]/);
- if(!match)throw Error('AI did not return a themed target list. Try again.');
- const arr=JSON.parse(match[0]);
- const cleaned=[...new Set(arr.map(x=>String(x).trim()).filter(x=>x.length>1&&x.length<=48&&/^[\p{L}\p{N}][\p{L}\p{N} '\-]*$/u.test(x)&&!['water','fire','wind','earth'].includes(x.toLowerCase())))];
- if(cleaned.length<count)throw Error(`AI only prepared ${cleaned.length}/${count} usable targets. Retry or use custom targets.`);
- return cleaned.slice(0,count);
+ const model=await load();const names=[];const seen=new Set();
+ // A small model can reliably provide a few targets per response, not 25 at once.
+ for(let attempt=0;attempt<Math.max(3,Math.ceil(count/4)+3)&&names.length<count;attempt++){
+  const remaining=count-names.length,ask=Math.min(6,remaining+2);
+  const samples={easy:'Stormtrooper, Droid, Lightsaber',medium:'Millennium Falcon, Darth Vader, Death Star',hard:'Darth Plagueis, Mandalorian, Star Destroyer'};
+  const messages=[
+   {role:'system',content:'You are making a bingo game. Return only a JSON array of distinct SPECIFIC proper names, individual people, physical objects, places or named events from the requested franchise/theme. NO category titles, NO explanations, NO generic words like characters or scenes. English language only.'},
+   {role:'user',content:`Theme: ${category}. Difficulty: ${difficulty}. Give ${ask} actual DISTINCT things that exist in this theme. For example, Star Wars medium targets could be ${samples[difficulty]}. Do not give a category name such as "Star Wars Characters" or "Star Wars Scenes". Already used: ${names.join(', ')||'(none)'}. Output a JSON string array only.`}
+  ];
+  const out=await model(messages,{max_new_tokens:Math.min(260,ask*32+50),do_sample:attempt>0,temperature:attempt>0?.55:undefined,return_full_text:false});
+  const options=readCandidates(generatedText(out),category);
+  for(const item of options){const key=item.toLowerCase();if(!seen.has(key)){seen.add(key);names.push(item);if(names.length===count)break}}
+  send({type:'status',message:`Prepared ${names.length}/${count} valid themed targets…`});
+ }
+ if(names.length<count)throw Error(`Prepared ${names.length}/${count} good targets. Try fewer bingo squares, a different theme or custom targets.`);
+ return names.slice(0,count);
 }
 // Serialize requests to avoid competing for GPU memory.
 let queue=Promise.resolve();

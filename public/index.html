@@ -85,6 +85,30 @@ function ensureLocalAI(){
 }
 $('loadLocalAi').onclick=()=>{try{if(aiBackend()==='cpu'&&aiTier()==='smart'){localStatus('CPU compatibility is only available with Light AI.');return} $('loadLocalAi').disabled=true;ensureLocalAI().postMessage({type:'load',preferredTier:aiTier(),backend:aiBackend()});localStatus('Preparing local AI...')}catch(e){$('loadLocalAi').disabled=false;toast(e.message)}};
 function localCombine(a,b){return new Promise((resolve,reject)=>{let worker;try{worker=ensureLocalAI()}catch(e){reject(e);return}const id=++localAiSeq;localAiJobs.set(id,{resolve,reject});localStatus(localAiReady?'Thinking on your computer...':'Preparing local AI...');worker.postMessage({type:'combine',id,a,b,preferredTier:aiTier(),backend:aiBackend()})})}
+// Reliable hand-curated themed targets for popular categories. AI handles everything else.
+const curatedThemes={
+ 'star wars':{
+  easy:['Luke Skywalker','Darth Vader','Yoda','R2-D2','C-3PO','Lightsaber','Stormtrooper','Jedi','Sith','Chewbacca','Princess Leia','Han Solo','Death Star','Tatooine','The Force','Obi-Wan Kenobi','Droid','X-Wing','Millennium Falcon','Boba Fett','Palpatine','Rebel Alliance','Jabba the Hutt','Ewok','Hoth','Wookiee','Blaster','Padawan'],
+  medium:['Anakin Skywalker','Ahsoka Tano','Darth Maul','Mandalorian','Kylo Ren','General Grievous','Clone Trooper','Star Destroyer','Coruscant','Naboo','Mustafar','Dagobah','Order 66','Grogu','Podracer','TIE Fighter','Endor','Jango Fett','Mace Windu','Count Dooku','Rey Skywalker','BB-8','Jedi Temple','Carbonite','Death Star II','Kamino','Geonosis','Darth Sidious'],
+  hard:['Darth Plagueis','Thrawn','Darth Revan','Beskar','Darksaber','Mortis','Nightsister','Mandalore','Kessel Run','Ilum','World Between Worlds','Darth Nihilus','Exegol','Sith Holocron','Rakata','Malgus','Yuuzhan Vong','Abeloth','Jedi Holocron','Lothal','Inquisitorius','Korriban','Darth Bane','Chiss Ascendancy','Ryloth','Purrgil','Dathomir','Moff Gideon']
+ },
+ 'cyberpunk':{
+  easy:['Neon','Robot','Computer','Hacker','Cybernetic Arm','Drone','Megacity','Laser','Android','Cyberpunk','Augmentation','Night City','Virtual Reality','Motorcycle','Cyberware','Hologram','Rooftop','Street Samurai','Implant','Smartgun','Nightclub','Skyscraper','Artificial Intelligence','Cyberdeck','Security Camera','Dystopia','Robot Arm','Neon Sign'],
+  medium:['Night City','Johnny Silverhand','V','Arasaka','Militech','Netrunner','Braindance','Sandevistan','Mantis Blades','Ripperdoc','Quickhack','Relic','Maelstrom','Voodoo Boys','MaxTac','NCPD','Adam Smasher','Afterlife','Judy Alvarez','Panam Palmer','Jackie Welles','Cyberpsychosis','Delamain','Kiroshi Optics','Blackwall','Edgerunner','Fixer','Trauma Team'],
+  hard:['Soulkiller','Mikoshi','Alt Cunningham','Songbird','Phantom Liberty','Dogtown','Kurt Hansen','NetWatch','Rogue AI','Engram','Temperance','Crystal Palace','Bartmoss','Spider Murphy','Doll Chip','Arasaka Tower','Erebus','Cynosure','Project Oracle','ICE','Net Architecture','Neural Matrix','Yorinobu Arasaka','Saburo Arasaka','Kang Tao','Biotechnica','DataKrash','Rache Bartmoss']
+ }
+};
+function curatedTargets(category,difficulty,count,excluded=[]){
+ const normalized=category.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const topic=normalized.includes('star wars')?'star wars':normalized.includes('cyberpunk')?'cyberpunk':null;
+ if(!topic)return null;
+ const pool=[...curatedThemes[topic][difficulty]];
+ const used=new Set(excluded.map(x=>x.toLowerCase()));
+ for(let i=pool.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+ const result=pool.filter(x=>!used.has(x.toLowerCase())).slice(0,count);
+ if(result.length<count)throw Error('Not enough distinct themed targets; try custom targets or a smaller board.');
+ return result;
+}
 function localTargetList(category,difficulty,count){return new Promise((resolve,reject)=>{
  let worker;try{worker=ensureLocalAI()}catch(e){reject(e);return}
  const id=++localAiSeq;localAiJobs.set(id,{resolve,reject});
@@ -127,7 +151,7 @@ function call(type,data){socket.emit(type,data,res=>{if(res&&!res.ok)toast(res.e
    const prep=await emitCombine('prepareStart',{});if(!prep?.ok)throw Error(prep?.error||'Cannot prepare round');
    const provided=payload.mode==='bingo'?payload.custom.split(/[,;\n]+/).filter(x=>x.trim()).length:0;
    const count=payload.mode==='bingo'?Math.max(0,payload.size*payload.size-provided):1;
-   if(count)payload.preparedTargets=await localTargetList(payload.category,payload.difficulty,count);
+   if(count){const custom=payload.mode==='bingo'?payload.custom.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean):[];payload.preparedTargets=curatedTargets(payload.category,payload.difficulty,count,custom)||await localTargetList(payload.category,payload.difficulty,count);}
   }
   const response=await emitCombine('start',payload);
   if(!response?.ok)throw Error(response?.error||'Could not start race');
