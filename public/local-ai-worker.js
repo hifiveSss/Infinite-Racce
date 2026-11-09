@@ -114,23 +114,43 @@ function readCandidates(text,category){
  }
  return arr.map(x=>cleanTarget(x,category)).filter(Boolean);
 }
+// Target generator for topics that are not in the verified franchise catalog.
+// Small local language models cannot reliably fact-check a franchise. Make them propose
+// candidates but never silently fill missing squares with unrelated words.
 async function makeTargets(category,difficulty,count,onProgress=()=>{}){
- const model=await load();const names=[];const seen=new Set();
- // A small model can reliably provide a few targets per response, not 25 at once.
- for(let attempt=0;attempt<Math.max(3,Math.ceil(count/4)+3)&&names.length<count;attempt++){
-  const remaining=count-names.length,ask=Math.min(6,remaining+2);
-  const samples={easy:'Stormtrooper, Droid, Lightsaber',medium:'Millennium Falcon, Darth Vader, Death Star',hard:'Darth Plagueis, Mandalorian, Star Destroyer'};
+ const model=await load();
+ const names=[],seen=new Set();
+ const context=String(category||'').trim().slice(0,45);
+ if(!context)throw Error('A category is required for themed generation.');
+ const bands={
+  easy:'widely recognised, short, iconic, simple names',
+  medium:'recognisable named characters, objects, places and events that really occur in the subject',
+  hard:'specific niche but authentic names, inventions, locations and events'
+ };
+ const ignored=/^(json|array|bingo|category|item|items|object|objects|name|names|answer|answers|none|unknown|random|test|example|result|results)$/i;
+ const rounds=Math.min(18,Math.max(8,Math.ceil(count/3)+7));
+ for(let attempt=0;attempt<rounds&&names.length<count;attempt++){
+  const remaining=count-names.length,ask=Math.min(5,remaining+2);
   const messages=[
-   {role:'system',content:'You are making a bingo game. Return only a JSON array of distinct SPECIFIC proper names, individual people, physical objects, places or named events from the requested franchise/theme. NO category titles, NO explanations, NO generic words like characters or scenes. English language only.'},
-   {role:'user',content:`Theme: ${category}. Difficulty: ${difficulty}. Give ${ask} actual DISTINCT things that exist in this theme. For example, Star Wars medium targets could be ${samples[difficulty]}. Do not give a category name such as "Star Wars Characters" or "Star Wars Scenes". Already used: ${names.join(', ')||'(none)'}. Output a JSON string array only.`}
+   {role:'system',content:'You are a careful trivia editor. Name ONLY real and specifically relevant people, things, locations, mechanics or events from the named subject. Never invent fake titles. Never borrow names from other franchises or similar games. No generic category headings. Respond with only one name per line. No numbering, descriptions or JSON.'},
+   {role:'user',content:`Subject: "${context}". Difficulty: ${difficulty} (${bands[difficulty]||bands.medium}). Give ${ask} DISTINCT specific real targets from THIS EXACT SUBJECT, NOT a different game or franchise. Never say a generic word like "characters", "items" or "scenes". Don't invent names. Do not repeat: ${names.join(' | ')||'none'}. OUTPUT ONLY THE NAMES, one per line.`}
   ];
-  const out=await model(messages,{max_new_tokens:Math.min(260,ask*32+50),do_sample:attempt>0,temperature:attempt>0?.55:undefined,return_full_text:false});
-  const options=readCandidates(generatedText(out),category);
-  for(const item of options){const key=item.toLowerCase();if(!seen.has(key)){seen.add(key);names.push(item);if(names.length===count)break}}
-  onProgress(names.slice());
-  send({type:'status',message:`Prepared ${names.length}/${count} valid themed targets…`});
+  const out=await model(messages,{
+   max_new_tokens:Math.min(190,ask*31+30),
+   do_sample:attempt>0,temperature:attempt>.5?.45:undefined,return_full_text:false
+  });
+  const options=readCandidates(generatedText(out),context);
+  for(const item of options){
+   const key=item.toLowerCase();
+   if(ignored.test(item)||seen.has(key)||/^(the )?(game|movie|series|franchise|universe)\s*\d+$/i.test(item))continue;
+   seen.add(key);names.push(item);
+   if(names.length===count)break;
+  }
+  send({type:'status',message:`Candidate targets: ${names.length}/${count} · ${context}`});
  }
- if(names.length<count)throw Error(`Prepared ${names.length}/${count} good targets. Try fewer bingo squares, a different theme or custom targets.`);
+ if(names.length<count)throw Error(`AI could only propose ${names.length}/${count} targets for "${context}". It will not fill the board with unrelated words. Use a supported theme or enter custom targets.`);
+ // Unlike old behaviour, reveal only after a complete set is collected.
+ onProgress(names.slice());
  return names.slice(0,count);
 }
 // Serialize requests to avoid competing for GPU memory.
