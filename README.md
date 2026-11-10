@@ -1,3 +1,17 @@
+# The Game Room — Three multiplayer browser games
+
+The site now starts with three playable games:
+
+- **Infinite Race** — `/race.html` (crafting, races, bingo and elimination battles).
+- **Bluff Club** — `/bluff.html` (2–12 players; 51 newly curated extra-hard questions from NASA, Natural History Museum and Smithsonian sources; the fact and source are revealed after voting).
+- **Context Crash** — `/context.html` (3–12 players; an **original** out-of-context comedy game with a separate multiplayer namespace). Each player answers a private innocent prompt, receives another player's quote without its original question, rewrites the context, then votes anonymously on the funniest disaster. It has room codes, timed phases, a host skip option, scoring, a final doubled-points round, and a leaderboard.
+
+All three games run on the same Render service and are accessible from the split-card homepage at `/`. Context Crash is independently implemented, not an official Jackbox game and not affiliated with Jackbox.
+
+**Context Crash scoring:** +1,000 points per vote for your twisted post, plus +200 per vote to the original quote author (if submitted); final round doubles both. You cannot vote for your own post. Player names and original innocent prompts remain private during voting and are revealed afterward. Game state is currently in memory and resets after a server restart.
+
+---
+
 # Infinite Race — Battle & Crafting Update
 
 Multiplayer browser crafting game with word racing, colored bingo and timed power battles. Built on Node.js, Express and Socket.IO.

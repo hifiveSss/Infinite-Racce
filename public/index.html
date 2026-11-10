@@ -14,8 +14,8 @@ a{text-decoration:none;color:inherit}
 .brand{font-size:17px;font-weight:1000;letter-spacing:-.055em}
 .brand span{display:inline-grid;place-items:center;background:#f4d257;width:32px;height:32px;border-radius:10px;color:#1b1927;margin-right:10px;transform:rotate(-8deg)}
 .topbar p{color:#9a9aaa;font-size:12px;letter-spacing:.16em;font-weight:800;text-transform:uppercase}
-.grid{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100dvh - 90px)}
-.game{position:relative;overflow:hidden;isolation:isolate;display:flex;align-items:center;justify-content:center;min-height:675px;padding:62px clamp(25px,5vw,84px);transition:filter .3s}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-height:calc(100dvh - 90px)}
+.game{position:relative;overflow:hidden;isolation:isolate;display:flex;align-items:center;justify-content:center;min-height:650px;padding:60px clamp(24px,3vw,55px);transition:filter .3s}
 .game::before{content:"";pointer-events:none;position:absolute;inset:0;z-index:-2}
 .game::after{content:"";pointer-events:none;position:absolute;inset:0;z-index:-1;opacity:.45}
 .game.race{background:#f7fafc;color:#1b2539}
@@ -24,14 +24,14 @@ a{text-decoration:none;color:inherit}
 .game.bluff::before{background:radial-gradient(ellipse at 90% 5%,#783d92,transparent 52%),radial-gradient(ellipse at 10% 100%,#463b95,transparent 48%)}
 .game.bluff::after{background-image:radial-gradient(#ffffff24 1px,transparent 1px);background-size:31px 31px}
 .game:hover{filter:saturate(1.12)}
-.inner{max-width:560px;width:100%;position:relative}
+.inner{max-width:475px;width:100%;position:relative}
 .chip{display:inline-flex;gap:8px;align-items:center;font-size:11px;font-weight:1000;text-transform:uppercase;letter-spacing:.14em;border:1px solid #94a3b85c;padding:10px 13px;border-radius:100px;background:#fff9}
 .bluff .chip{border-color:#dfb2f285;background:#ffffff1b}
-.title{font-size:clamp(52px,6.5vw,100px);line-height:.95;letter-spacing:-.095em;font-weight:1000;margin:25px 0 18px;max-width:700px}
+.title{font-size:clamp(46px,5.25vw,86px);line-height:.95;letter-spacing:-.095em;font-weight:1000;margin:25px 0 18px;max-width:700px}
 .title span{display:block}
 .race .title span:nth-child(2){color:#527de7}
 .bluff .title span:nth-child(2){color:#f1d65f}
-.description{font-size:clamp(16px,1.45vw,19px);line-height:1.65;max-width:430px}
+.description{font-size:clamp(14px,1.35vw,18px);line-height:1.65;max-width:430px}
 .race .description{color:#667289}
 .bluff .description{color:#d6cce5}
 .play{display:inline-flex;align-items:center;gap:24px;border:0;border-radius:16px;padding:18px 20px;font-size:16px;font-weight:950;margin-top:23px;transition:transform .18s,box-shadow .18s}
@@ -55,6 +55,19 @@ a{text-decoration:none;color:inherit}
 .fakeChoices div{background:#f1e9f7;border-radius:9px;padding:9px 10px;font-size:12px;font-weight:800}
 .fakeChoices div:nth-child(2){background:#e5f8db;color:#327039;border:1px solid #a9d59a}
 .corner{position:absolute;right:clamp(18px,3vw,48px);top:25px;font-size:12px;font-weight:900;opacity:.45;letter-spacing:.18em}
+.game.context{background:#062733;color:#fff}
+.game.context::before{background:radial-gradient(ellipse at 90% 0%,#13616b,transparent 55%),radial-gradient(ellipse at 12% 90%,#085b58,transparent 50%)}
+.game.context::after{background-image:radial-gradient(#ffffff1d 1px,transparent 1px);background-size:28px 28px}
+.context .chip{border-color:#5cddc873;background:#00e6bd20}
+.context .title span:nth-child(2){color:#18e5ba}
+.context .description{color:#b4e0d8}
+.context .play{background:#11e3b8;color:#06342e;box-shadow:0 7px 0 #07836e}
+.contextMock{width:min(100%,410px);border-radius:18px;background:#e3fbf4;border:2px solid #65dabe;padding:20px;transform:rotate(2deg);color:#113e43;box-shadow:0 15px 45px #001e2836;transition:transform .25s}
+.game.context:hover .contextMock{transform:rotate(0) translateY(-8px)}
+.contextMock small{display:block;font-size:11px;font-weight:950;color:#078d79;letter-spacing:.09em;margin-bottom:11px}
+.contextMock b{display:block;font-size:19px;line-height:1.3;letter-spacing:-.03em}
+.contextMock q{display:block;margin-top:12px;background:#ffffff;border-left:4px solid #13bda0;padding:14px;font-weight:800;border-radius:8px}
+@media(min-width:901px) and (max-width:1240px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.game.context{grid-column:1/-1;min-height:560px}.game.context .inner{max-width:650px}}
 @media(max-width:900px){.grid{grid-template-columns:1fr}.game{min-height:670px;padding:55px 30px}.inner{max-width:600px}.title{font-size:clamp(62px,11vw,96px)}.topbar p{font-size:10px}}
 @media(max-width:580px){.topbar{min-height:72px;padding:15px 18px}.topbar p{display:none}.game{min-height:630px;padding:39px 23px}.title{font-size:clamp(61px,15vw,90px)}.mockup{margin-top:29px;height:210px}}
 </style>
@@ -79,7 +92,17 @@ a{text-decoration:none;color:inherit}
   <h2 class="title"><span>BLUFF</span><span>CLUB.</span></h2>
   <p class="description">Write convincing lies to weird questions, trick your friends into picking them, and try to uncover the truth. Like a party game night, but everyone's suspicious.</p>
   <div class="play">Play Bluff Club <span class="arrow">↗</span></div>
-  <div class="mockup" aria-hidden="true"><div class="fakeCard"><small>ROUND 03 · WHICH IS REAL?</small><h3>What was Play-Doh originally sold as?</h3><div class="fakeChoices"><div>Hair gel</div><div>✓ Wallpaper cleaner</div><div>Shoe polish</div></div></div></div>
+  <div class="mockup" aria-hidden="true"><div class="fakeCard"><small>ROUND 03 · WHICH IS REAL?</small><h3>What was a bizarre 1857 typewriter nicknamed?</h3><div class="fakeChoices"><div>Writing Harp</div><div>✓ Literary Piano</div><div>Mechanical Organ</div></div></div></div>
+ </div>
+</a>
+<a class="game context" href="/context.html" aria-label="Play Context Crash">
+ <div class="corner">03 / TWIST & EXPOSE</div>
+ <div class="inner">
+  <div class="chip">📱 OUT-OF-CONTEXT · 3–12 PLAYERS</div>
+  <h2 class="title"><span>CONTEXT</span><span>CRASH.</span></h2>
+  <p class="description">Your innocent words. Your friends' awful headlines. Make the funniest out-of-context internet post and vote for the biggest disaster.</p>
+  <div class="play">Play Context Crash <span class="arrow">↗</span></div>
+  <div class="mockup" aria-hidden="true"><div class="contextMock"><small>🚨 OFFICIAL ANNOUNCEMENT</small><b>New school policy for eating homework</b><q>I would honestly do this every day!</q></div></div>
  </div>
 </a>
 </main>

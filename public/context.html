@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071b29">
+<title>Context Crash — An out-of-context party game</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#f7fbfb;background:#061724}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 10% 0%,#145061 0%,transparent 55%),radial-gradient(ellipse at 95% 85%,#193c5c 0%,transparent 50%),#061724}
+button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.42;cursor:not-allowed}
+a{color:inherit;text-decoration:none}.hidden{display:none!important}
+.shell{max-width:1260px;margin:auto;padding:22px 22px 65px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.logo{font-size:19px;font-weight:1000;letter-spacing:-.045em;display:flex;align-items:center;gap:9px}
+.logo span{background:#00e6bb;border-radius:10px;color:#00352f;padding:7px 10px;transform:rotate(-8deg)}
+.homeLink{font-weight:800;font-size:13px;color:#c6f7ed;border:1px solid #46d7ba55;border-radius:99px;padding:10px 15px}
+.homeLink:hover{background:#ffffff17}
+.hero{text-align:center;margin:43px auto 36px;max-width:800px}
+.eyebrow{color:#24efc5;font-weight:1000;letter-spacing:.22em;font-size:12px}
+.hero h1{font-size:clamp(48px,10vw,110px);font-weight:1000;line-height:.97;letter-spacing:-.095em;margin:9px auto 17px}
+.hero h1 span{color:#12e9bf;text-shadow:0 0 55px #00efb745}
+.hero p{font-size:17px;color:#c3e1e4;line-height:1.6;max-width:670px;margin:auto}
+.panel{border:1px solid #73e6dd34;border-radius:24px;background:#ffffff0c;box-shadow:0 27px 70px #0003;padding:27px}
+#entry{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.panel h2{margin:0 0 8px;letter-spacing:-.04em;font-size:26px}
+.small{font-size:14px;color:#a8c6d0;line-height:1.55}
+label.field{display:block;font-weight:900;font-size:12px;color:#9be7d7;letter-spacing:.08em;margin:21px 0 7px}
+input,textarea,select{width:100%;padding:15px;border:1px solid #79d9d653;background:#ffffff10;border-radius:12px;outline:0;color:#fff}
+textarea{min-height:122px;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:#2aefbd;box-shadow:0 0 0 3px #16d0b526}
+input::placeholder,textarea::placeholder{color:#8ca6b0}
+select option{background:#0f3040}
+.btn{border:0;border-radius:13px;font-weight:950;padding:16px 21px;transition:transform .15s,background .15s}
+.btn.main{background:#19e8bd;color:#053b34;box-shadow:0 6px 0 #078b75}
+.btn.main:hover:not(:disabled){transform:translateY(-3px)}
+.btn.main:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 #078b75}
+.btn.secondary{background:#ffffff18;color:#fff;border:1px solid #83c9ca51}
+.btn.secondary:hover{background:#ffffff32}
+.full{width:100%}
+.joinRow{display:flex;gap:8px}.joinRow input{min-width:0;flex:1;text-transform:uppercase;letter-spacing:.14em}.joinRow button{flex-shrink:0}
+.or{text-align:center;font-size:12px;color:#94adbe;font-weight:950;letter-spacing:.15em;margin:24px 0 8px}
+.steps{display:grid;gap:16px;margin:18px 0}
+.step{display:flex;align-items:start;gap:12px}
+.num{flex:0 0 36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#0fe4ba;color:#003c39;font-weight:1000}
+.step strong{font-size:15px}.step p{font-size:13px;color:#aacbd3;margin:5px 0;line-height:1.5}
+.demo{background:#073b4b;border:1px solid #2eadab6d;border-radius:15px;padding:17px;margin-top:19px;transform:rotate(-1deg)}
+.demo small{color:#9bfde4;font-weight:950;letter-spacing:.1em}
+.demo b{display:block;color:#fff;margin:9px 0;font-size:17px}
+.demo blockquote{background:#ffffff13;padding:10px 12px;margin:11px 0;border-left:3px solid #25f7c9}
+#game{display:grid;grid-template-columns:minmax(0,1fr) 255px;gap:20px;align-items:start}
+.toolbar{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-bottom:18px}
+.roomRow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.code{background:#12e7bb;color:#052f2e;padding:8px 14px;font-weight:1000;letter-spacing:.16em;border-radius:10px;font-size:21px}
+.timer{color:#40ffd2;font-size:28px;font-variant-numeric:tabular-nums;font-weight:1000}
+.pill{padding:9px 12px;border-radius:99px;background:#defff321;color:#9dfbdb;font-size:12px;font-weight:950}
+.mainCard{background:#f0fbfa;border-radius:25px;box-shadow:0 30px 90px #0005;color:#06303c;padding:29px;min-height:350px}
+.mainCard h2{font-size:clamp(27px,4vw,44px);line-height:1.13;letter-spacing:-.055em;margin:10px 0 19px}
+.mainCard .caption{font-weight:1000;font-size:12px;letter-spacing:.15em;color:#148e82;text-transform:uppercase}
+.mainCard .help{font-size:14px;color:#567882;line-height:1.55}
+.mainCard textarea{background:white;color:#07333e;border:2px solid #b2d6d1;font-size:20px;font-weight:650}
+.mainCard textarea::placeholder{color:#95b0b0}
+.mainCard .btn.main{background:#10d5a8;box-shadow:0 6px 0 #07916c}
+.mainCard .btn.secondary{color:#06413a;background:#e0f2ec;border-color:#b4ddd4}
+.mainCard input,.mainCard select{color:#104146;background:#fff;border-color:#b6d9d6}
+.question{background:#d8f3eb;padding:23px;border-radius:15px;border-left:5px solid #08ba97;font-size:clamp(21px,3vw,31px);font-weight:950;letter-spacing:-.035em;line-height:1.3;margin:17px 0}
+.quote{background:white;border:1px solid #b6ddd8;border-radius:15px;padding:20px;margin:17px 0;position:relative;box-shadow:0 8px 21px #0b6f6f16;font-size:25px;font-weight:850;letter-spacing:-.035em}
+.quote::before{content:"“";position:absolute;right:17px;top:-12px;font-size:78px;color:#0aa88d36}
+.progress{font-size:13px;color:#61827f;margin:14px 0}
+.success{padding:14px;border-radius:12px;background:#d9f6de;color:#17693e;font-weight:850;margin:15px 0}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.actions>button{flex:1}
+.pList{display:flex;gap:9px;flex-wrap:wrap;margin:17px 0}
+.pChip{padding:9px 12px;border-radius:9px;background:#ddf3f0;border:1px solid #b3d8d6;font-size:13px;font-weight:850}
+.postGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.post{background:white;border:2px solid #c2dcd8;border-radius:15px;padding:17px;text-align:left;box-shadow:0 9px 22px #0b374113;min-width:0;transition:border .15s,transform .15s}
+button.post:hover:not(:disabled){border-color:#09b893;transform:translateY(-3px)}
+.post .postType{font-size:11px;letter-spacing:.09em;color:#168f83;font-weight:950}
+.post b{display:block;color:#0c3038;font-size:18px;margin:10px 0 14px;overflow-wrap:anywhere}
+.post .postQuote{background:#e7f7f1;border-left:4px solid #11be96;padding:12px;font-weight:800;line-height:1.3;color:#2b4d50;border-radius:8px;overflow-wrap:anywhere}
+.post.inactive{opacity:.6}
+.revealStack{display:grid;gap:11px}
+.revealPost{background:#fff;border:1px solid #b5dad5;border-radius:15px;padding:15px}
+.revealPost strong{display:block;margin:9px 0;color:#103c45}
+.revealPost .origin{color:#637f84;margin:12px 0 0;font-size:12px;line-height:1.5}
+.revealPost .votes{color:#069c7e;font-weight:950;font-size:12px}
+.badge{display:inline-block;border-radius:99px;background:#ddf6ed;padding:7px 10px;color:#047a64;font-weight:950;font-size:11px}
+.scoreBoard{position:sticky;top:16px;border:1px solid #5bd9c241;background:#ffffff0b;padding:20px;border-radius:21px}
+.scoreBoard h3{margin:0 0 16px}
+.scoreLine{display:grid;grid-template-columns:25px minmax(0,1fr) auto;align-items:center;gap:9px;padding:11px 0;border-top:1px solid #ffffff1d;font-size:13px}
+.scoreLine:first-child{border:0}
+.scoreLine b{color:#34efc6;font-variant-numeric:tabular-nums}
+.scoreLine span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scoreLine.me span:nth-child(2){color:#5fffd6;font-weight:900}
+.trophy{text-align:center;font-size:82px;margin:15px 0}
+.winner{text-align:center;color:#047c67;font-size:clamp(28px,5vw,47px);font-weight:1000;letter-spacing:-.055em;margin:10px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,30px);opacity:0;pointer-events:none;transition:.2s;max-width:90vw;background:#19e8bc;padding:14px 20px;color:#063e34;border-radius:13px;box-shadow:0 18px 45px #0007;z-index:9;font-weight:900;text-align:center}
+#toast.visible{opacity:1;transform:translate(-50%,0)}
+@media(max-width:900px){#entry,#game{grid-template-columns:1fr}.scoreBoard{position:static}.hero{margin-top:25px}}
+@media(max-width:550px){.shell{padding:14px 12px 55px}.panel,.mainCard{padding:20px}.hero h1{font-size:clamp(58px,13vw,90px)}.hero p{font-size:15px}.top{align-items:flex-start}.postGrid{grid-template-columns:1fr}.joinRow{flex-wrap:wrap}.joinRow .btn{width:100%}.quote{font-size:21px}}
+</style></head><body>
+<div class="shell">
+<nav class="top"><a href="/" class="logo"><span>@</span> CONTEXT CRASH</a><a href="/" class="homeLink">← All games</a></nav>
+<header class="hero"><div class="eyebrow">THE INTERNET WAS A MISTAKE · 3–12 PLAYERS</div><h1>CONTEXT <span>CRASH.</span></h1><p>Say something innocent. Your friends steal your quote, give it the worst possible context, and everyone votes for the most outrageous result.</p></header>
+<section id="entry">
+<div class="panel"><h2>Enter the chaos.</h2><p class="small">Make a room and invite your friends. Everyone plays on their own phone or computer.</p>
+<label class="field" for="name">Your display name</label><input id="name" maxlength="22" placeholder="Professional internet menace">
+<button class="btn main full" id="create" style="margin-top:15px">Create room ⚡</button>
+<div class="or">OR JOIN YOUR FRIENDS</div><label class="field" for="joinCode">Room code</label>
+<div class="joinRow"><input id="joinCode" maxlength="6" placeholder="AB12CD" autocapitalize="characters"><button class="btn secondary" id="join">Join →</button></div>
+</div>
+<div class="panel"><h2>How it works</h2>
+<div class="steps">
+<div class="step"><div class="num">1</div><div><strong>Answer honestly</strong><p>Everyone privately answers a different harmless question.</p></div></div>
+<div class="step"><div class="num">2</div><div><strong>Steal the quote</strong><p>Get a friend's answer, with the original question hidden. Write a ridiculous headline, product name or forum post that makes it look terrible.</p></div></div>
+<div class="step"><div class="num">3</div><div><strong>Vote & expose</strong><p>Everyone votes for the funniest twisted quote. You earn points for writing it; the person you quoted gets a smaller bonus.</p></div></div>
+</div>
+<div class="demo"><small>SAMPLE INTERNET DISASTER</small><b>🚨 OFFICIAL ANNOUNCEMENT: New school policy for eating homework</b><blockquote>“I would genuinely do this every day!”</blockquote></div>
+</div>
+</section>
+<section id="game" class="hidden">
+<main>
+<div class="toolbar"><div class="roomRow"><span class="code" id="roomCode">------</span><button class="btn secondary" id="invite">Copy invite</button><button class="btn secondary" id="leave">Leave</button></div><div class="roomRow"><span class="pill" id="roundPill">LOBBY</span><span class="timer" id="timer"></span></div></div>
+<div class="mainCard">
+<section id="lobby" class="hidden"><div class="caption">THE INTERNET IS LOADING</div><h2>Gather your friends.</h2><p class="help">At least three people are needed. Up to 12 can join.</p><div class="question" id="lobbyCode">------</div><div class="caption">IN THIS ROOM</div><div class="pList" id="playerChips"></div>
+<div id="hostSetup" class="hidden"><label class="field" for="rounds">Rounds</label><select id="rounds"><option value="3">3 — Quick chaos</option><option value="4" selected>4 — Classic</option><option value="5">5 — Extra spicy</option><option value="6">6 — Maximum chaos</option></select><div class="actions"><button class="btn main" id="start">Start the game →</button></div></div><p class="help" id="hostWaiting">Waiting for the host to start…</p>
+</section>
+<section id="writing" class="hidden"><div class="caption">ROUND 1 · WRITE SOMETHING INNOCENT</div><h2>Answer the question.</h2><div class="question" id="innocentPrompt">Loading your prompt…</div><p class="help">Be honest, short and natural. Someone else will try to make your words sound ridiculous.</p><textarea id="answerText" maxlength="110" placeholder="What would you actually say?"></textarea><div class="actions"><button class="btn main" id="sendAnswer">Submit my answer</button></div><div id="answerDone" class="success hidden">✓ Answer locked. Waiting for everyone else…</div><div class="progress" id="answerProgress"></div></section>
+<section id="twisting" class="hidden"><div class="caption">THIS IS GOING TO AGE BADLY</div><h2>Make them look ridiculous.</h2><p class="help" id="twistInstructions"></p><div id="stolenQuote" class="quote">Loading stolen quote…</div><textarea id="twistText" maxlength="130" placeholder="Write the worst possible context…"></textarea><div class="actions"><button class="btn main" id="sendTwist">Publish the disaster →</button></div><div id="twistDone" class="success hidden">✓ It's been posted. Waiting for the others…</div><div class="progress" id="twistProgress"></div></section>
+<section id="voting" class="hidden"><div class="caption">THE INTERNET DECIDES</div><h2>Which post is the worst?</h2><p class="help">Vote for the funniest out-of-context quote. You can't vote for one you created.</p><div id="postGrid" class="postGrid"></div><div id="voteDone" class="success hidden">✓ You voted! Reveal coming up…</div><div class="progress" id="voteProgress"></div></section>
+<section id="reveal" class="hidden"><div class="caption">EXPOSED</div><h2>The receipts are in.</h2><p class="help">Here's who twisted whom, and what the original question actually was.</p><div id="revealStack" class="revealStack"></div><p id="myPoints" class="progress"></p><div id="advanceWrap" class="actions hidden"><button class="btn secondary" id="advance">Next round →</button></div></section>
+<section id="finished" class="hidden"><div class="trophy">🏆</div><div class="caption" style="text-align:center">INTERNET LEGEND</div><div class="winner" id="winnerName"></div><p class="help" style="text-align:center" id="winnerMessage"></p><div class="actions"><button class="btn main" id="again">Play again!</button></div></section>
+</div>
+<div class="actions" id="hostControls" style="justify-content:flex-end"><button class="btn secondary hidden" id="skip">Host: skip phase →</button></div>
+</main>
+<aside class="scoreBoard"><h3>⚡ Reputation scoreboard</h3><div id="scoreRows"></div><p class="small" style="font-size:12px;margin-top:21px">Each vote for your twist: <strong style="color:#37efbe">+1,000</strong><br>Each vote for your original quote: <strong style="color:#37efbe">+200</strong><br>Final round scores double.</p></aside>
+</section>
+</div><div id="toast" role="status" aria-live="polite"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $=id=>document.getElementById(id),socket=io('/context');
+let game=null,task=null,lastPhase='',lastRound=0,toastTimeout;
+const show=id=>$(id).classList.remove('hidden'),hide=id=>$(id).classList.add('hidden');
+const alertUser=s=>{const el=$('toast');el.textContent=s;el.classList.add('visible');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('visible'),3300)};
+const el=(tag,cls,value)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(value!==undefined)e.textContent=value;return e};
+const mine=()=>game?.players?.find(p=>p.id===socket.id);
+const host=()=>game?.host===socket.id;
+const reply=(event,data,onDone)=>socket.emit(event,data,res=>{if(!res?.ok)alertUser(res?.error||'Something went wrong');else onDone?.(res)});
+try{$('name').value=sessionStorage.getItem('contextCrashName')||''}catch{}
+const query=new URLSearchParams(location.search).get('room');if(query)$('joinCode').value=query.toUpperCase().slice(0,6);
+function saveName(){try{sessionStorage.setItem('contextCrashName',$('name').value.trim())}catch{}}
+$('create').onclick=()=>{saveName();reply('create',{name:$('name').value},r=>{history.replaceState(null,'','/context.html?room='+r.code);alertUser('Room created! Invite your friends.')})};
+$('join').onclick=()=>{saveName();reply('join',{name:$('name').value,code:$('joinCode').value},r=>{history.replaceState(null,'','/context.html?room='+r.code);alertUser('Joined!')})};
+$('joinCode').onkeydown=e=>{if(e.key==='Enter')$('join').click()};
+$('leave').onclick=()=>reply('leave',{},()=>{history.replaceState(null,'','/context.html');game=null;task=null;render()});
+$('invite').onclick=()=>{
+ const u=location.origin+'/context.html?room='+game.code;
+ if(navigator.clipboard?.writeText)navigator.clipboard.writeText(u).then(()=>alertUser('Invite link copied!')).catch(()=>alertUser('Code: '+game.code));
+ else alertUser('Room code: '+game.code);
+};
+$('start').onclick=()=>reply('start',{rounds:Number($('rounds').value)});
+$('again').onclick=()=>reply('start',{rounds:Number($('rounds').value)});
+$('sendAnswer').onclick=()=>reply('answer',{text:$('answerText').value});
+$('sendTwist').onclick=()=>reply('twist',{text:$('twistText').value});
+$('skip').onclick=()=>reply('skip',{});
+$('advance').onclick=()=>reply('skip',{});
+socket.on('disconnect',()=>alertUser('Connection lost. Rejoin if needed.'));
+socket.on('state',r=>{game=r;if(!r)task=null;render()});
+socket.on('task',t=>{task=t;render()});
+function taskNow(){return task&&task.stage===game?.stage&&task.round===game?.round?task:null}
+function leaderboard(){
+ $('scoreRows').replaceChildren();
+ game.players.forEach((p,index)=>{
+  const row=el('div','scoreLine'+(p.id===socket.id?' me':''));
+  row.append(el('span','',index===0?'👑':String(index+1)),el('span','',p.name+(p.id===game.host?' ★':'')),el('b','',p.score.toLocaleString()));
+  $('scoreRows').append(row);
+ });
+}
+function renderLobby(){
+ $('lobbyCode').textContent=game.code;$('playerChips').replaceChildren();
+ for(const p of game.players)$('playerChips').append(el('span','pChip',p.name+(p.id===game.host?' 👑':'')));
+ $('hostSetup').classList.toggle('hidden',!host());$('hostWaiting').classList.toggle('hidden',host());
+ $('start').disabled=game.players.length<3;
+}
+function renderWriting(){
+ const t=taskNow(),done=Boolean(t?.already);
+ $('innocentPrompt').textContent=t?.prompt||'Loading your private question…';
+ $('answerText').disabled=done;$('sendAnswer').classList.toggle('hidden',done);$('answerDone').classList.toggle('hidden',!done);
+ $('answerProgress').textContent=game.done+'/'+game.players.length+' answered';
+}
+function renderTwisting(){
+ const t=taskNow(),done=Boolean(t?.already);
+ $('twistInstructions').textContent=t?.instructions||'Write a ridiculous context to turn a quote into an internet disaster.';
+ $('stolenQuote').textContent='“'+(t?.quote||'Waiting for the quote…')+'”';
+ $('twistText').disabled=done;$('sendTwist').classList.toggle('hidden',done);$('twistDone').classList.toggle('hidden',!done);
+ $('twistProgress').textContent=game.done+'/'+game.players.length+' disasters written';
+}
+function renderVoting(){
+ const t=taskNow(),done=Boolean(t?.already);
+ $('voteDone').classList.toggle('hidden',!done);
+ $('postGrid').replaceChildren();
+ for(const post of game.posts){
+  const own=t?.own===post.id,button=el('button','post'+(own||done?' inactive':''));
+  button.disabled=done||own||!t;
+  button.append(el('span','postType',game.modeIcon+' '+game.mode+(own?' · YOUR POST':'')),el('b','',post.headline),el('div','postQuote','“'+post.quote+'”'));
+  button.onclick=()=>reply('vote',{id:post.id});$('postGrid').append(button);
+ }
+ $('voteProgress').textContent=game.done+'/'+game.players.length+' votes received';
+}
+function renderReveal(){
+ const info=game.reveal;if(!info)return;
+ $('revealStack').replaceChildren();
+ for(const [index,post] of info.results.entries()){
+  const card=el('div','revealPost');
+  const top=el('span','badge',(index===0?'👑 ':'')+post.votes+' vote'+(post.votes===1?'':'s'));
+  card.append(top,el('strong','',post.headline));
+  card.append(el('div','quote','“'+post.quote+'”'));
+  card.append(el('div','origin','Remixed by '+post.writer+' · Original quote from '+post.quoted));
+  card.append(el('div','origin','Original innocent question: '+post.originalPrompt));
+  if(post.voters.length)card.append(el('div','origin','Voted by: '+post.voters.join(', ')));
+  $('revealStack').append(card);
+ }
+ const gain=info.gains.find(g=>g.id===socket.id);
+ $('myPoints').textContent='You earned '+(gain?.points||0).toLocaleString()+' points this round'+(info.multiplier===2?' · DOUBLE POINTS!':'');
+ $('advanceWrap').classList.toggle('hidden',!host());
+}
+function renderFinish(){
+ const won=game.winners.includes(socket.id),names=game.players.filter(p=>game.winners.includes(p.id)).map(p=>p.name);
+ $('winnerName').textContent=won?'YOU WON THE INTERNET!':names.join(' & ')+' WON!';
+ $('winnerMessage').textContent=won?'Your completely irresponsible internet behaviour has paid off.':'Final leaderboard is on the right. Rematch?';
+ $('again').classList.toggle('hidden',!host());
+}
+function render(){
+ $('entry').classList.toggle('hidden',!!game);$('game').classList.toggle('hidden',!game);
+ if(!game)return;
+ $('roomCode').textContent=game.code;
+ const phases=['lobby','writing','twisting','voting','reveal','finished'];
+ for(const k of phases)$(k).classList.toggle('hidden',game.stage!==k);
+ $('roundPill').textContent=game.stage==='lobby'?'LOBBY':game.stage==='finished'?'FINAL RESULTS':('ROUND '+game.round+' / '+game.total);
+ if(lastRound!==game.round||lastPhase!==game.stage){
+  if(game.stage==='writing'){$('answerText').value='';$('answerText').disabled=false}
+  if(game.stage==='twisting'){$('twistText').value='';$('twistText').disabled=false}
+  lastRound=game.round;lastPhase=game.stage;
+ }
+ $('skip').classList.toggle('hidden',!host()||['lobby','finished','reveal'].includes(game.stage));
+ if(game.stage==='lobby')renderLobby();
+ if(game.stage==='writing')renderWriting();
+ if(game.stage==='twisting')renderTwisting();
+ if(game.stage==='voting')renderVoting();
+ if(game.stage==='reveal')renderReveal();
+ if(game.stage==='finished')renderFinish();
+ leaderboard();tick();
+}
+function tick(){
+ if(!game?.endsAt){$('timer').textContent='';return}
+ const s=Math.max(0,Math.ceil((game.endsAt-Date.now())/1000));
+ $('timer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+ $('timer').style.color=s<11?'#ff9fab':'#40ffd2';
+}
+setInterval(tick,250);
+</script></body></html>

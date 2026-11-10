@@ -8,9 +8,11 @@ import {readFileSync} from 'node:fs';
 const emojiKeywords=JSON.parse(readFileSync(new URL('./node_modules/emojilib/dist/emoji-en-US.json',import.meta.url),'utf8'));
 import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
 import {attachBluffClub} from './bluff-club.js';
+import {attachContextCrash} from './context-crash.js';
 import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount} from './gemini-pool.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
+attachContextCrash(io); // A separate namespace for the original out-of-context party game.
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),...recipeStats()}));
 
