@@ -9,10 +9,12 @@ const emojiKeywords=JSON.parse(readFileSync(new URL('./node_modules/emojilib/dis
 import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
 import {attachBluffClub} from './bluff-club.js';
 import {attachContextCrash} from './context-crash.js';
+import {attachTeeRiot} from './tee-riot.js';
 import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount} from './gemini-pool.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
 attachContextCrash(io); // A separate namespace for the original out-of-context party game.
+attachTeeRiot(io); // Independent multiplayer namespace for the shirt-drawing championship.
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),...recipeStats()}));
 

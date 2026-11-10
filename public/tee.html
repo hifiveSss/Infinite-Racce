@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#171326">
+<title>TEE RIOT — Draw it. Wear it. Win it.</title>
+<style>
+:root{font-family:Inter,ui-rounded,system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;background:#171326}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 85% -20%,#45274f 0%,transparent 51%),radial-gradient(ellipse at 0% 90%,#493152 0%,transparent 50%),#171326}
+a{color:inherit;text-decoration:none}button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.46;cursor:not-allowed}
+.hidden{display:none!important}
+.shell{max-width:1350px;margin:0 auto;padding:17px clamp(13px,3vw,36px) 65px}
+.topnav{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:1000;letter-spacing:-.04em;font-size:19px}
+.brandMark{width:38px;height:38px;display:grid;place-items:center;background:#ffde58;color:#3c2240;border-radius:12px;transform:rotate(-8deg);font-size:21px}
+.home{font-size:13px;font-weight:900;border:1px solid #ffffff39;padding:9px 15px;border-radius:99px;background:#ffffff12}
+.home:hover{background:#ffffff29}
+.hero{text-align:center;padding:28px 10px 30px}
+.eyebrow{color:#ffaee4;font-size:12px;font-weight:1000;letter-spacing:.2em}
+.hero h1{font-size:clamp(52px,10vw,106px);line-height:.98;letter-spacing:-.09em;font-weight:1000;margin:7px 0 14px}
+.hero h1 span{color:#ffdd57;text-shadow:0 6px 50px #eec33e50}
+.hero p{font-size:17px;line-height:1.55;color:#d6bed9;margin:auto;max-width:700px}
+.panel{background:#ffffff11;border:1px solid #ffffff2c;border-radius:24px;padding:26px;box-shadow:0 25px 60px #08041132}
+.entryGrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1080px;margin:auto}
+.panel h2{font-size:27px;letter-spacing:-.04em;margin:0 0 8px}
+.muted{color:#cdbbd2;font-size:14px;line-height:1.55}
+.field{font-size:12px;font-weight:1000;color:#f7bfdc;letter-spacing:.07em;display:block;margin:20px 0 7px}
+input:not([type=range]):not([type=color]):not([type=checkbox]),textarea,select{width:100%;background:#ffffff0e;border:1px solid #ffffff44;border-radius:12px;padding:14px 16px;color:#fff;outline:0}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #ffdc5880;outline-offset:1px}
+textarea{resize:vertical}
+input::placeholder,textarea::placeholder{color:#aa9aaf}
+button.btn{border:0;border-radius:12px;font-weight:950;padding:14px 18px;transition:transform .13s,background .13s}
+.btn.main{background:#ffdd58;color:#281a35;box-shadow:0 6px 0 #b68c30}
+.btn.main:hover:not(:disabled){transform:translateY(-3px)}
+.btn.main:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 #b68c30}
+.btn.soft{background:#ffffff1c;color:#fff;border:1px solid #ffffff42}
+.btn.soft:hover{background:#ffffff30}
+.btn.full{width:100%}
+.joinRow{display:flex;gap:8px}
+.joinRow input{min-width:0;flex:1;text-transform:uppercase;letter-spacing:.16em}
+.or{text-align:center;font-size:12px;letter-spacing:.15em;font-weight:950;color:#bfb2c8;margin:22px 0 10px}
+.step{display:flex;align-items:flex-start;gap:12px;margin:17px 0}
+.stepNum{flex:0 0 39px;height:39px;border-radius:13px;background:#ffdc58;color:#342538;font-size:20px;font-weight:1000;display:grid;place-items:center;transform:rotate(-5deg)}
+.step strong{font-size:16px}
+.step p{color:#d0bdd2;font-size:13px;line-height:1.5;margin:4px 0}
+#game{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:20px;align-items:start}
+.gameBar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 17px}
+.barLeft,.barRight{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.codeTag{font-weight:1000;letter-spacing:.17em;font-size:23px;color:#35203d;background:#ffda57;border-radius:11px;padding:9px 15px}
+.gameBar .btn{padding:10px 13px;font-size:12px}
+.time{font-size:26px;color:#ffda59;font-weight:1000;font-variant-numeric:tabular-nums}
+.phasePill{font-size:11px;font-weight:1000;letter-spacing:.08em;border:1px solid #faafd353;border-radius:99px;padding:9px 12px;background:#f3b9e31c}
+.gameMain{min-width:0}
+.gameCard{background:#fcf7ff;color:#281e39;border:1px solid #ffffff44;border-radius:25px;padding:23px;box-shadow:0 30px 75px #0904144a;min-width:0}
+.gameCard h2{font-size:clamp(27px,4vw,39px);line-height:1.12;letter-spacing:-.055em;margin:8px 0 14px}
+.gameCard .smallLabel{font-size:11px;letter-spacing:.14em;font-weight:1000;color:#9662a5}
+.gameCard .help{font-size:14px;color:#75667f;line-height:1.55}
+.gameCard .btn.soft{background:#eee3f4;border:1px solid #dbcae3;color:#432c55}
+.gameCard .btn.soft:hover{background:#e2d2eb}
+.gameCard textarea,.gameCard input:not([type=range]):not([type=color]):not([type=checkbox]){color:#311f41;background:#fff;border-color:#d5c4dc}
+.gameCard textarea::placeholder,.gameCard input::placeholder{color:#b3a1b7}
+.gameCard .btn.main{background:#d9b6f0;box-shadow:0 6px 0 #9364aa}
+.actionRow{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0 0}
+.actionRow button{flex:1}
+.playerList{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0}
+.playerChip{background:#eddef5;border-radius:9px;border:1px solid #e0c5ed;padding:9px 12px;font-weight:800;font-size:13px}
+#lobbyCode{font-size:clamp(38px,7vw,68px);letter-spacing:.17em;font-weight:1000;background:#f2e4f9;border-radius:14px;text-align:center;padding:18px 8px;margin:16px 0;color:#8553a1}
+#lobbyPanel select{background:#fff;color:#382546}
+.editorGrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(230px,.65fr);gap:17px;align-items:start}
+.editorPanel{border:1px solid #dbcbe6;background:#fff;border-radius:18px;padding:14px;min-width:0}
+.toolBar{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.tool{background:#f5f0f9;border:1px solid #dcd0e6;color:#433151;border-radius:9px;min-height:37px;padding:7px 10px;font-size:12px;font-weight:800}
+.tool:hover{background:#ebdef4}
+.tool.active{background:#3b2850;color:#fff;border-color:#3b2850}
+.tool strong{font-weight:950}
+#paintWrap{margin:12px auto 9px;position:relative;width:min(100%,610px);border:2px solid #c6b8d0;border-radius:13px;overflow:hidden;box-shadow:0 11px 30px #402e5a13;background-color:#fdfdfd;background-image:linear-gradient(45deg,#eceaf0 25%,transparent 25%),linear-gradient(-45deg,#eceaf0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eceaf0 75%),linear-gradient(-45deg,transparent 75%,#eceaf0 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+#paint{display:block;width:100%;aspect-ratio:1/1;touch-action:none;cursor:crosshair}
+.editorControls{display:flex;flex-direction:column;gap:11px}
+.controlRow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-size:12px;color:#6c5876;font-weight:850}
+.controlRow input[type=range]{flex:1;min-width:70px;accent-color:#8652a2}
+.controlRow label{white-space:nowrap}
+.controlRow output{color:#563367;min-width:30px;text-align:right}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.swatch,.shirtSwatch{width:27px;height:27px;padding:0;border:2px solid #b3a9bd;border-radius:9px;flex-shrink:0}
+.swatch.selected,.shirtSwatch.selected{outline:3px solid #38234d;outline-offset:1px}
+.customPicker{width:34px;height:31px;border:1px solid #d6c6dd;border-radius:8px;padding:2px;background:#fff;cursor:pointer}
+.toggleLabel{display:flex;gap:6px;align-items:center;font-size:12px;font-weight:850;cursor:pointer}
+#stampControls{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+#stampControls input{flex:1;min-width:130px;padding:9px!important}
+.editorBottom{display:flex;gap:7px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.hint{font-size:11px;color:#8e8097}
+.previewPanel{background:#f3edf7;border:1px solid #dbc9e7;border-radius:19px;padding:16px;text-align:center;position:sticky;top:15px}
+.previewTitle{color:#88539a;font-weight:950;font-size:12px;letter-spacing:.13em;margin:1px 0 12px}
+.shirtArt{width:100%;position:relative;aspect-ratio:1/1.1}
+.shirtArt svg{width:100%;height:100%;display:block;filter:drop-shadow(0px 13px 8px #240b3023)}
+.shirtArt .shirtImage{position:absolute;left:29%;top:27%;width:42%;height:41%;object-fit:contain;pointer-events:none}
+.shirtArt .shirtSlogan{position:absolute;top:69%;left:25%;width:50%;height:18%;overflow:hidden;text-align:center;display:flex;align-items:flex-start;justify-content:center;font-size:clamp(8px,.92vw,13px);font-weight:1000;line-height:1.1;overflow-wrap:anywhere;text-transform:uppercase}
+.previewPanel .shirtOptions{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:11px 0}
+.ready{border-radius:11px;background:#e4f7e8;color:#237344;padding:13px;font-size:13px;font-weight:800;margin:16px 0}
+#slogansPanel input{font-size:19px;padding:18px}
+#slogansPanel .smallLabel{margin:8px 0}
+.battleGrid{display:grid;grid-template-columns:1fr 65px 1fr;gap:13px;align-items:center}
+.vs{font-size:clamp(30px,5vw,60px);font-weight:1000;color:#9c5da8;letter-spacing:-.08em;text-align:center}
+.battleCard{background:white;border:2px solid #dfcee8;border-radius:17px;padding:10px;text-align:center;min-width:0}
+.battleCard .shirtArt{max-width:280px;margin:auto}
+.battleCard .battleName{font-size:13px;color:#9671a0;font-weight:950;margin:7px 0 2px}
+.battleCard .btn{width:100%;margin-top:6px}
+.battleCard.winner{border-color:#d2a944;background:#fff8d9;animation:winningGlow .9s ease-in-out infinite alternate}
+@keyframes winningGlow{from{box-shadow:0 0 0 #eecb80}to{box-shadow:0 0 21px #e7c36290}}
+.battleCard.loser{opacity:.42;filter:grayscale(1)}
+.winnerBanner{font-size:17px;font-weight:1000;text-align:center;color:#8b5797;background:#f1e2f8;border-radius:14px;padding:14px;margin:16px 0}
+.matchHistory{margin-top:19px;border-top:1px solid #e5d9e9;padding-top:17px}
+.matchHistory h3{font-size:14px;margin:0 0 8px;color:#79618a}
+.matchLine{font-size:12px;color:#71667e;padding:7px 0;border-bottom:1px solid #ede5ef}
+.scorePanel{background:#ffffff10;border:1px solid #ffffff27;border-radius:21px;padding:20px;position:sticky;top:15px}
+.scorePanel h3{margin:0 0 15px}
+.scoreLine{display:grid;grid-template-columns:23px minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid #ffffff25;font-size:13px}
+.scoreLine:first-child{border-top:0}.scoreLine b{color:#ffe26c;font-variant-numeric:tabular-nums}
+.scoreLine .name{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.scoreLine.me .name{font-weight:950;color:#ffd867}
+#championPanel .shirtArt{width:min(330px,90%);margin:auto}
+#championPanel .winnerName{text-align:center;color:#8851a0;font-weight:1000;font-size:clamp(28px,6vw,50px);letter-spacing:-.06em;margin:18px 0}
+#toast{position:fixed;bottom:18px;left:50%;z-index:25;opacity:0;transform:translate(-50%,24px);transition:.18s;pointer-events:none;color:#2e2041;background:#ffe077;border-radius:11px;padding:13px 18px;max-width:90vw;text-align:center;font-size:13px;font-weight:900;box-shadow:0 14px 40px #0007}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@media(max-width:1100px){.editorGrid{grid-template-columns:1fr}.previewPanel{position:static}.shirtArt{max-width:330px;margin:auto}.shirtArt .shirtSlogan{font-size:12px}}
+@media(max-width:850px){.entryGrid,#game{grid-template-columns:1fr}.scorePanel{position:static}.hero{padding:20px 0 22px}}
+@media(max-width:600px){.shell{padding:14px 10px 40px}.gameCard{padding:13px;border-radius:16px}.panel{padding:21px}.joinRow{flex-wrap:wrap}.joinRow .btn{width:100%}.editorPanel{padding:9px}.tool{padding:8px 10px;flex:1;font-size:11px}.battleGrid{grid-template-columns:1fr 27px 1fr;gap:5px}.battleCard{padding:5px}.vs{font-size:27px}.battleCard .btn{font-size:11px;padding:10px 6px}.battleCard .shirtArt .shirtSlogan{font-size:8px}.hero h1{font-size:clamp(55px,13vw,92px)}}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="topnav"><a href="/" class="brand"><span class="brandMark">👕</span> TEE RIOT</a><a href="/" class="home">← All games</a></nav>
+<header class="hero"><div class="eyebrow">DRAW · REMIX · DUEL · REPEAT</div><h1>TEE <span>RIOT.</span></h1><p>Draw outrageous shirt art, write ridiculous slogans, and battle your friends' designs in a knockout championship. No art skills required.</p></header>
+<section id="entry" class="entryGrid">
+ <div class="panel"><h2>Start the shirt war.</h2><p class="muted">3–12 players. Everyone draws and votes from their own phone or computer. Share a six-character room code.</p><label class="field" for="playerName">YOUR NICKNAME</label><input id="playerName" maxlength="22" autocomplete="nickname" placeholder="T-shirt mastermind"><button class="btn main full" id="createRoom" style="margin-top:16px">Create a room ✦</button><div class="or">OR JOIN A ROOM</div><label class="field" for="joinCode">ROOM CODE</label><div class="joinRow"><input id="joinCode" maxlength="6" placeholder="ABC123" autocapitalize="characters"><button class="btn soft" id="joinRoom">Join →</button></div></div>
+ <div class="panel"><h2>How it works</h2><div class="step"><div class="stepNum">1</div><div><strong>Draw a shirt design</strong><p>Use a proper drawing editor with brushes, eraser, shapes, fill, colours, undo/redo and more.</p></div></div><div class="step"><div class="stepNum">2</div><div><strong>Write two absurd slogans</strong><p>The game secretly pairs them with other people's designs. Nobody gets their own slogan.</p></div></div><div class="step"><div class="stepNum">3</div><div><strong>Shirt vs shirt</strong><p>Vote on ridiculous outfits. Winners move through an elimination bracket until only one champion remains.</p></div></div><div class="step"><div class="stepNum">4</div><div><strong>Crown the shirt champion</strong><p>Earn points for votes your art and slogans attract. The last shirt standing wins the championship.</p></div></div></div>
+</section>
+<section id="game" class="hidden">
+ <main class="gameMain">
+  <div class="gameBar"><div class="barLeft"><span class="codeTag" id="roomCode">------</span><button class="btn soft" id="invite">Copy invite</button><button class="btn soft" id="leave">Leave</button></div><div class="barRight"><span class="phasePill" id="phasePill">LOBBY</span><span class="time" id="timer"></span></div></div>
+  <div class="gameCard">
+   <section id="lobbyPanel" class="hidden"><div class="smallLabel">GATHER THE DESIGNERS</div><h2>Bring your most questionable artistic talent.</h2><p class="help">At least 3 friends are needed, up to 12. Each person draws on their own screen.</p><div id="lobbyCode">------</div><div class="smallLabel">PLAYERS IN THE ROOM</div><div class="playerList" id="lobbyPlayers"></div><div id="hostStart" class="hidden"><div class="actionRow"><button class="btn main" id="startGame">Start shirt showdown →</button></div></div><p id="waitingHost" class="help">Waiting for the host…</p></section>
+   <section id="drawingPanel" class="hidden"><div class="smallLabel">PHASE 1 · DRAW YOUR MASTERPIECE</div><h2 id="drawingTitle">Make the weirdest shirt possible.</h2><p class="help">Prompt: <strong id="drawingPrompt"></strong> — or do your own thing! Draw on the large canvas. Your art appears on the shirt preview.</p>
+    <div class="editorGrid">
+     <div class="editorPanel">
+      <div class="toolBar" id="toolBar">
+       <button class="tool active" data-tool="brush" title="Smooth brush (B)">🖌️ Brush</button>
+       <button class="tool" data-tool="eraser" title="Eraser (E)">◻ Eraser</button>
+       <button class="tool" data-tool="line" title="Straight line">╱ Line</button>
+       <button class="tool" data-tool="rect" title="Rectangle">▭ Rect</button>
+       <button class="tool" data-tool="ellipse" title="Ellipse">◯ Oval</button>
+       <button class="tool" data-tool="fill" title="Bucket fill connected area">▧ Fill</button>
+       <button class="tool" data-tool="eyedropper" title="Pick a colour from your drawing">◉ Pick</button>
+       <button class="tool" data-tool="text" title="Place text on canvas">T Text</button>
+      </div>
+      <div id="paintWrap"><canvas id="paint" width="640" height="640" aria-label="Drawing canvas. Draw with mouse, touch or stylus"></canvas></div>
+      <div class="editorControls">
+       <div class="controlRow"><label for="brushSize">Brush size</label><input type="range" id="brushSize" min="2" max="90" value="13"><output id="sizeLabel">13px</output><label for="opacity">Opacity</label><input type="range" id="opacity" min="10" max="100" value="100"><output id="opacityLabel">100%</output></div>
+       <div class="swatches" id="paintColors" role="group" aria-label="Paint colours"></div>
+       <div class="controlRow"><label for="customColor">Any colour:</label><input class="customPicker" type="color" id="customColor" value="#161325" aria-label="Custom paint colour"><label class="toggleLabel"><input type="checkbox" id="fillShape"> Fill shapes</label><div id="stampControls" class="hidden"><input id="stampText" type="text" maxlength="40" placeholder="Text to stamp"></div></div>
+       <div class="editorBottom"><div class="toolBar"><button class="tool" id="undo" title="Ctrl+Z">↶ Undo</button><button class="tool" id="redo" title="Ctrl+Shift+Z">↷ Redo</button><button class="tool" id="clearArt">✕ Clear</button><button class="tool" id="saveArt" title="Save your artwork as a PNG">↓ Save PNG</button></div><span class="hint">Tip: mouse, touchscreen & stylus all work. Ctrl+Z to undo.</span></div>
+      </div>
+     </div>
+     <div class="previewPanel"><div class="previewTitle">LIVE SHIRT PREVIEW</div><div id="liveShirt"></div><div class="previewTitle" style="margin-top:13px">SHIRT COLOUR</div><div id="shirtColors" class="shirtOptions"></div><p class="help">Your painting is saved without a background so it looks good on different shirts.</p><button class="btn main full" id="submitArt">Lock in my artwork →</button><div class="ready hidden" id="artDone">✓ Artwork locked in! Waiting for the other designers…</div><p class="help" id="drawingCount"></p></div>
+    </div>
+   </section>
+   <section id="slogansPanel" class="hidden"><div class="smallLabel">PHASE 2 · GIVE THE PEOPLE SOMETHING TO WEAR</div><h2>Write two ridiculous shirt slogans.</h2><p class="help">Your slogans get paired with someone else's artwork. Keep them short, unexpected and memorable.</p><label class="field" for="sloganOne" style="color:#8956a0">SLOGAN #1</label><input id="sloganOne" maxlength="70" placeholder="I'M NOT A ROBOT (YET)"><label class="field" for="sloganTwo" style="color:#8956a0">SLOGAN #2</label><input id="sloganTwo" maxlength="70" placeholder="UNSUPERVISED SINCE 2009"><div class="actionRow"><button class="btn main" id="submitSlogans">Submit both slogans →</button></div><div class="ready hidden" id="sloganDone">✓ Slogans locked in! Your designs are getting mixed with everyone else's.</div><p class="help" id="sloganCount"></p></section>
+   <section id="duelPanel" class="hidden"><div class="smallLabel">PHASE 3 · T-SHIRT SMACKDOWN</div><h2 id="duelHeading">Which shirt deserves to survive?</h2><p class="help" id="duelInstruction">Vote for the better shirt. If your design is fighting, you sit this vote out.</p><div class="battleGrid" id="duelGrid"></div><p id="voteStatus" class="help" style="text-align:center;margin:14px 0"></p><div class="matchHistory"><h3>CHAMPIONSHIP SO FAR</h3><div id="duelHistory"></div></div></section>
+   <section id="revealPanel" class="hidden"><div class="smallLabel">THE VOTES ARE IN</div><h2>One shirt advances. One gets eliminated.</h2><div class="battleGrid" id="resultGrid"></div><div class="winnerBanner" id="matchWinner"></div><div class="matchHistory"><h3>THE ROAD TO THE FINAL</h3><div id="revealHistory"></div></div></section>
+   <section id="championPanel" class="hidden"><div class="smallLabel" style="text-align:center">🏆 SHIRT CHAMPIONSHIP COMPLETE</div><h2 style="text-align:center" id="championTitle">THE CHAMPION</h2><div id="championShirt"></div><div id="championName" class="winnerName"></div><p class="help" id="finishReason" style="text-align:center"></p><div class="actionRow"><button class="btn main" id="playAgain">Another round? →</button></div></section>
+  </div>
+  <div class="actionRow" id="adminActions"><button class="btn soft hidden" id="skipStage">Host: skip phase →</button></div>
+ </main>
+ <aside class="scorePanel"><h3>🏆 Shirt leaderboard</h3><div id="scoreRows"></div><p class="muted" style="font-size:12px;margin-top:19px">Your drawing earns <b>+100</b> for each vote it gets. Your slogan earns <b>+40</b> per vote.<br>The winning shirt takes the trophy.</p></aside>
+</section>
+</div><div id="toast" role="status" aria-live="polite"></div>
+<script src="/socket.io/socket.io.js"></script><script src="/tee.js"></script></body></html>

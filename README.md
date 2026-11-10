@@ -1,12 +1,15 @@
-# The Game Room — Three multiplayer browser games
+# The Game Room — Four multiplayer browser games
 
-The site now starts with three playable games:
+The site now starts with four playable games:
 
 - **Infinite Race** — `/race.html` (crafting, races, bingo and elimination battles).
 - **Bluff Club** — `/bluff.html` (2–12 players; 51 newly curated extra-hard questions from NASA, Natural History Museum and Smithsonian sources; the fact and source are revealed after voting).
 - **Context Crash** — `/context.html` (3–12 players; an **original** out-of-context comedy game with a separate multiplayer namespace). Each player answers a private innocent prompt, receives another player's quote without its original question, rewrites the context, then votes anonymously on the funniest disaster. It has room codes, timed phases, a host skip option, scoring, a final doubled-points round, and a leaderboard.
+- **Tee Riot** — `/tee.html` (3–12 players; an original T-shirt party game inspired by drawing/slogan competitions). Everyone designs an image and submits two slogans; the server pairs art with another player's slogan, then runs an elimination tournament with private artist-vote restrictions, byes for odd player counts, scoring and a champion reveal. The drawing editor has a smooth brush, eraser, shape tools, fill bucket, eyedropper, text stamp, palette/custom colours, brush size, opacity, transparent PNG export, history undo/redo, touch support and a live mockup with shirt-colour selection.
 
-All three games run on the same Render service and are accessible from the split-card homepage at `/`. Context Crash is independently implemented, not an official Jackbox game and not affiliated with Jackbox.
+All four games run on the same Render service and are accessible from the game-card homepage at `/`. Context Crash is independently implemented, not an official Jackbox game and not affiliated with Jackbox.
+
+**Tee Riot scoring:** +100 points to the artist and +40 to the assigned slogan writer for each vote the shirt receives. A final tournament winner is crowned after 3–12 players' shirts face off. Images are sent as limited-size WebP or PNG data URLs (not permanently stored). Drawing, slogan and match phases have automatic timeouts.
 
 **Context Crash scoring:** +1,000 points per vote for your twisted post, plus +200 per vote to the original quote author (if submitted); final round doubles both. You cannot vote for your own post. Player names and original innocent prompts remain private during voting and are revealed afterward. Game state is currently in memory and resets after a server restart.
 
