@@ -3,9 +3,8 @@
 <style>
 :root{font-family:Arial,Helvetica,sans-serif;color:#121212;background:#fff}*{box-sizing:border-box}body{margin:0;overflow:hidden}#board,#board *:not(input){-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none}#board .piece *{pointer-events:none}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}
 #app{display:flex;width:100vw;height:100dvh;overflow:hidden}#board{flex:1;min-width:0;position:relative;background:#fff;overflow:hidden;touch-action:none;cursor:grab}#board.panning{cursor:grabbing}#starfield{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}#world{position:absolute;left:0;top:0;width:1px;height:1px;transform-origin:0 0;will-change:transform;pointer-events:none}#world .piece{pointer-events:auto}#logo{position:absolute;left:17px;top:12px;font-family:Georgia,serif;font-size:32px;line-height:1;letter-spacing:-1.4px;font-weight:700;pointer-events:none}#logo span{font-size:11px;display:block;letter-spacing:2.5px;font-family:Arial,sans-serif;margin-top:5px;color:#666;font-weight:normal}#boardTitle{position:absolute;right:14px;top:10px;text-align:right;font-family:Georgia,serif;font-size:29px;line-height:.93;pointer-events:none}#boardTitle b{font-weight:normal}#bottomLeft,#bottomRight{position:absolute;bottom:9px;display:flex;gap:5px;align-items:center}#bottomLeft{left:9px}#bottomRight{right:12px}.plainButton{background:#fff;border:1px solid #d2d2d2;border-radius:5px;padding:8px 12px;font-size:13px;font-weight:600;color:#111;box-shadow:0 1px 3px #00000008}.plainButton:hover{background:#f4f4f4}.roundButton{width:34px;height:34px;padding:0;text-align:center}.zoomDisplay{font-size:12px;color:#777;min-width:43px;text-align:center}#toast{position:absolute;bottom:59px;left:50%;transform:translateX(-50%);background:#242424;color:white;font-size:13px;border-radius:7px;padding:10px 16px;box-shadow:0 5px 20px #0002;z-index:30;max-width:80%;text-align:center;pointer-events:none;opacity:0;transition:opacity .15s}#toast.show{opacity:1}
-#sidebar{width:310px;flex:none;display:flex;flex-direction:column;border-left:1px solid #d8d8d8;background:#fff;z-index:4;min-height:0}#sideTop{padding:15px 13px 10px}#sideTitle{font-size:15px;font-weight:bold;margin:0 0 12px}#count{color:#888;font-weight:normal}.bank{display:flex;gap:7px;flex-wrap:wrap;align-content:flex-start;overflow:auto;padding:0 13px 12px;flex:1;min-height:0}.item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;border:1px solid #d0d0d0;border-radius:5px;padding:7px 10px;color:#111;font-size:14px;font-weight:600;line-height:1.1;user-select:none;box-shadow:0 1px 1px #00000009;cursor:grab}.item:hover{background:#f6f6f6;border-color:#aaa}.item:active{cursor:grabbing}.item.rare{background:#fffbea}.item .ico{font-size:16px;font-weight:normal}.piece{position:absolute;white-space:nowrap;touch-action:none;cursor:grab;box-shadow:0 2px 5px #00000013;pointer-events:auto}.piece.dragging{cursor:grabbing;box-shadow:0 4px 14px #0003}.piece.new{animation:birth .28s cubic-bezier(.15,1.5,.4,1) both}@keyframes birth{0%{opacity:.25;scale:.62}65%{opacity:1;scale:1.12}100%{opacity:1;scale:1}} .piece#board.craft-flash::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:12;background:var(--craft-wash);animation:craftWash .75s ease-out both}
+#sidebar{width:310px;flex:none;display:flex;flex-direction:column;border-left:1px solid #d8d8d8;background:#fff;z-index:4;min-height:0}#sideTop{padding:15px 13px 10px}#sideTitle{font-size:15px;font-weight:bold;margin:0 0 12px}#count{color:#888;font-weight:normal}.bank{display:flex;gap:7px;flex-wrap:wrap;align-content:flex-start;overflow:auto;padding:0 13px 12px;flex:1;min-height:0}.item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:#fff;border:1px solid #d0d0d0;border-radius:5px;padding:7px 10px;color:#111;font-size:14px;font-weight:600;line-height:1.1;user-select:none;box-shadow:0 1px 1px #00000009;cursor:grab}.item:hover{background:#f6f6f6;border-color:#aaa}.item:active{cursor:grabbing}.item.rare{background:#fffbea}.item .ico{font-size:16px;font-weight:normal}.piece{position:absolute;white-space:nowrap;touch-action:none;cursor:grab;box-shadow:0 2px 5px #00000013;pointer-events:auto}.piece.dragging{cursor:grabbing;box-shadow:0 4px 14px #0003}.piece.new{animation:birth .28s cubic-bezier(.15,1.5,.4,1) both}@keyframes birth{0%{opacity:.25;scale:.62}65%{opacity:1;scale:1.12}100%{opacity:1;scale:1}} #board.craft-flash::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:12;background:var(--craft-wash);animation:craftWash .75s ease-out both}
 #board.source-cached{--craft-wash:rgba(133,140,150,.25)}
-#board.source-groq{--craft-wash:rgba(255,178,30,.25)}
 #board.source-gemini{--craft-wash:rgba(45,139,255,.24)}
 #board.source-local{--craft-wash:rgba(40,195,100,.24)}
 #world .piece.craft-output{outline:3px solid var(--craft-border)!important;box-shadow:0 0 16px 4px var(--craft-border)!important;animation:craftPieceGlow .9s ease-out both;z-index:9999!important}
@@ -14,12 +13,10 @@
 
 #world .piece.craft-thinking{--ai-glow:#858c96;animation:craftThinkingPulse 1s ease-in-out infinite!important;border-color:var(--ai-glow)!important;box-shadow:0 0 10px 4px var(--ai-glow),0 0 24px var(--ai-glow)!important;z-index:9998!important}
 #world .piece.craft-thinking[data-thinking="cached"]{--ai-glow:#858c96}
-#world .piece.craft-thinking[data-thinking="groq"]{--ai-glow:#ffb21e}
 #world .piece.craft-thinking[data-thinking="gemini"]{--ai-glow:#2d8bff}
 #world .piece.craft-thinking[data-thinking="local"]{--ai-glow:#28c364}
 @keyframes craftThinkingPulse{0%,100%{scale:1;filter:brightness(1)}50%{scale:1.12;filter:brightness(1.2)}}
 #preparingBlock.provider-glow{--ai-prep:#858c96;animation:prepGlow 1.1s ease-in-out infinite;box-shadow:0 0 16px var(--ai-prep)!important;border-color:var(--ai-prep)!important}
-#preparingBlock.provider-glow[data-ai="groq"]{--ai-prep:#ffb21e}
 #preparingBlock.provider-glow[data-ai="gemini"]{--ai-prep:#2d8bff}
 #preparingBlock.provider-glow[data-ai="local"]{--ai-prep:#28c364}
 #preparingBlock.provider-glow[data-ai="cached"]{--ai-prep:#858c96}
@@ -262,7 +259,7 @@ function emitCombine(type,payload){return new Promise(resolve=>socket.emit(type,
 let activeCraftThinking=null;
 let craftFlashNumber=0;
 function flashCraft(source,el){
- const options=['cached','groq','gemini','local'],name=options.includes(source)?source:'cached',colors={cached:'#858c96',groq:'#ffb21e',gemini:'#2d8bff',local:'#28c364'};
+ const options=['cached','gemini','local'],name=options.includes(source)?source:'cached',colors={cached:'#858c96',gemini:'#2d8bff',local:'#28c364'};
  const seq=++craftFlashNumber;
  board.classList.remove('craft-flash',...options.map(s=>'source-'+s));
  void board.offsetWidth;board.classList.add('source-'+name,'craft-flash');
@@ -277,7 +274,7 @@ async function mix(a,b,x,y,consumed=[]){
  try{
   let res=await emitCombine('combine',{a,b});
   if(res?.needsLocal){
-   localStatus('Groq and Gemini unavailable • using local AI');
+   localStatus('Gemini unavailable • switching to local AI');
    active.update('local');const generated=await localCombine(a,b);
    res=await emitCombine('localCombine',{a,b,...generated});
    if(res?.ok)localStatus('Local AI ready • discovery saved');
@@ -287,7 +284,7 @@ async function mix(a,b,x,y,consumed=[]){
   if(res.emoji)emojis[res.result]=res.emoji;
   sound('mix');const pos=x===undefined?randomVisiblePosition():{x,y};
   const piece=addPiece(res.result,pos.x,pos.y);flashCraft(res.source||'cached',piece?.el);
-  const labels={cached:'Saved recipe',groq:'Groq',gemini:'Gemini',local:'Local AI'};
+  const labels={cached:'Saved recipe',gemini:'Gemini',local:'Local AI'};
   toast(`${a} + ${b} = ${res.result} · ${labels[res.source]||'Saved recipe'}${res.fresh?' ✨ New!':''}`);
  }catch(e){sound('error');toast(e?.message||'Could not combine')}
  finally{for(const p of consumed){p.el.classList.remove('craft-thinking');delete p.el.dataset.thinking}if(activeCraftThinking===active)activeCraftThinking=null}
@@ -333,7 +330,7 @@ $('start').onclick=async()=>{
      let generated=[];
      if(count){
        const cloud=await emitCombine('generateCategory',{category:payload.category,difficulty:payload.difficulty,count});
-       if(!cloud?.ok)throw Error(cloud?.error||'Groq and Gemini could not generate the entire board');
+       if(!cloud?.ok)throw Error(cloud?.error||'All configured Gemini keys were unable to generate the complete board');
        generated=cloud.targets;
      }
      if(!Array.isArray(generated)||generated.length!==count)throw Error('Got '+(generated?.length||0)+'/'+count+' targets. Refusing partial board.');
@@ -602,7 +599,7 @@ function renderPreparation(r){
  }
  previewShown=Math.max(previewShown,words.length);
  const got=Math.min(total,words.length);
- $('prepInfo').textContent=p.mode==='bingo'?(got===total?'Board ready! Starting soon…':(p.category?'Theme: '+p.category+' • ':'')+(got?'Revealing targets…':'Thinking with '+({groq:'Groq',gemini:'Gemini',local:'Local AI',cached:'saved recipes',unavailable:'cloud AI (unavailable)'}[p.provider]||'cloud AI')+'…')):'Generating the race target…';
+ $('prepInfo').textContent=p.mode==='bingo'?(got===total?'Board ready! Starting soon…':(p.category?'Theme: '+p.category+' • ':'')+(got?'Revealing targets…':'Thinking with '+({gemini:'Gemini',local:'Local AI',cached:'saved recipes',unavailable:'Gemini (unavailable)'}[p.provider]||'Gemini')+'…')):'Generating the race target…';
  $('prepCount').textContent=got+' / '+total+' squares ready';
  $('prepProgressFill').style.width=(got/total*100)+'%';
 }

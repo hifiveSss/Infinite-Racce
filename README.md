@@ -6,7 +6,7 @@ Multiplayer browser crafting game with word racing, colored bingo and timed powe
 
 1. Upload the files inside this folder to your GitHub repository (keep `package.json` in the repository root).
 2. Create/update your Render **Web Service** with Build `npm install`, Start `npm start`, instance type Free.
-3. Optional: set `GEMINI_API_KEY` in the Render Environment to enable the Gemini model for combinations not covered by the offline recipes, custom theme target generation and battle judging. The default model setting is `gemini-3.5-flash-lite`. If Google changes availability, set `GEMINI_MODEL` to an available supported model.
+3. Configure up to five Gemini keys in Render Environment as `GEMINI_API_KEY_1` through `GEMINI_API_KEY_5`. An existing `GEMINI_API_KEY` can act as slot 1 for backwards compatibility. Gemini handles new cloud combinations and themed bingo; `GEMINI_MODEL` defaults to `gemini-3.5-flash` (you can override it). See [Gemini setup](GEMINI_SETUP.md) for full details.
 4. Visit the Render URL. Players do not need to download or install the game.
 
 Free Render instances sleep between visits; in-memory lobby state and player discoveries are not persistent across server restarts. Gemini free API quotas also apply. Do not put API secrets in GitHub or client-side code.
@@ -23,7 +23,7 @@ Free Render instances sleep between visits; in-memory lobby state and player dis
 
 - **Word race**: create a custom target or random target using Easy / Medium / Hard and optional theme.
 - **Bingo**: first player to claim a square owns it; player's color and name show on the square. A line wins. If every square is claimed without a line, highest score wins. Custom/AI/random boards support 3x3, 4x4, 5x5.
-- **Power battle**: host sets 15–900 seconds. Craft items and submit one fighter. At the deadline Gemini attempts a quick fantasy judgement of the submitted fighters, falling back to a consistent local power score if free AI is unavailable. Result includes animated fighters, effects, scores and a waiting screen.
+- **Power battle**: host sets 15–900 seconds. Craft items and submit one fighter. At the deadline, submitted fighters compete in a seeded elimination tournament using consistent local power scores. The screen shows an animated bracket, sword duels, and a winner.
 
 ## Offline combinations
 
