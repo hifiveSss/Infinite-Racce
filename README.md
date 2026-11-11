@@ -28,6 +28,39 @@ Multiplayer browser crafting game with word racing, colored bingo and timed powe
 
 Free Render instances sleep between visits; in-memory lobby state and player discoveries are not persistent across server restarts. Gemini free API quotas also apply. Do not put API secrets in GitHub or client-side code.
 
+## November 2026: Faster crafting and verified Gemini slots
+
+The built-in recipe library now has **26,906 unique unordered ingredient pairs** — **3,197 new deterministic recipes** beyond the previous 23,709, plus **94 replacements** of generic recipes with more specific outcomes. The new recipes are mainly real food preparation, countries and capitals, colours, and established science/game combinations. They never require AI or quota. These counts are validated at startup via \`recipeStats()\`.
+
+Cloud crafting is now designed for low latency and lower API usage:
+
+- Built-in recipes first, new Gemini generation only for unknown combinations.
+- No more Bing/Wikipedia network lookups on every craft, which previously added up to 2.4 seconds.
+- By default, crafting uses \`gemini-3.5-flash-lite\` with minimal thinking; themed bingo uses \`gemini-3.5-flash\` with low thinking. Override using \`GEMINI_CRAFT_MODEL\` / \`GEMINI_BINGO_MODEL\` in Render if those models aren't available to your project.
+- Each key gets paced requests (default **3.6 seconds minimum between starts per key**); adjust with \`GEMINI_REQUEST_SPACING_MS\`.
+- Keys returning 429 (quota), 401 (invalid key), 403 (restricted) or 404 (model unavailable) are marked and cooled down. HTTP 404 on Flash-Lite may use the Flash fallback on the same key.
+- An invalid AI answer does **not** trigger four more expensive requests on other keys.
+- Dynamic recipes are cached in RAM and saved using debounced async writes to a **small dynamic-only file**, rather than synchronous writes of 27,000 built-in recipes on every combination.
+
+### Checking whether your keys REALLY work
+
+Visit \`https://infinite-race.onrender.com/api/status\`. The \`geminiHealth.keys\` array contains each *slot number*, a sanitized real-test \`status\`, the tested model, HTTP status and last check time. **No API keys are returned.**
+
+At server startup, each configured key gets one tiny real \`generateContent\` call, allowing us to distinguish a loaded environment variable from an actually working Gemini project. Tests are deliberately not repeated on every page load, to avoid consuming your free-tier quota.
+
+- \`working\`: a real Gemini generation succeeded
+- \`restricted\` (403) or \`invalid-key\` (401): that slot cannot currently be used
+- \`rate-limited\` (429): the project has hit a current usage limit
+- \`model-unavailable\` (404): the model isn't accessible for that project
+- \`untested\`: the server hasn't completed its one-time test yet
+
+If it reports **five** configured keys but you only intend to use four, check Render Environment for a leftover \`GEMINI_API_KEY_5\` or other old variable. Multiple API keys in the same Google Cloud project **share** that project's limits.
+
+Google's per-project limits depend on model, RPM, TPM and RPD. This software cannot multiply quotas or guarantee an unlimited free tier. In-memory caches reset on Render service restarts, and persistent storage requires a persistent disk/database.
+
+Official docs: https://ai.google.dev/gemini-api/docs/rate-limits
+
+
 ## Controls
 
 - Click a sidebar item: places it near the center with a small random offset.

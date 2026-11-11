@@ -10,13 +10,13 @@ import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,
 import {attachBluffClub} from './bluff-club.js';
 import {attachContextCrash} from './context-crash.js';
 import {attachTeeRiot} from './tee-riot.js';
-import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount} from './gemini-pool.js';
+import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount,geminiKeyHealth,probeGeminiKeys} from './gemini-pool.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
 attachContextCrash(io); // A separate namespace for the original out-of-context party game.
 attachTeeRiot(io); // Independent multiplayer namespace for the shirt-drawing championship.
 app.use(express.static('public'));
-app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),...recipeStats()}));
+app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),geminiHealth:geminiKeyHealth(),...recipeStats()}));
 
 /* Internet research for AI crafting and bingo.
  Public no-key sources: Bing RSS search, Wikipedia, Wikidata.
@@ -294,37 +294,28 @@ function verifiedTargets(raw,category,count,excluded=[]){
  return out;
 }
 async function geminiBoard(category,difficulty,count,excluded,setProvider){
- if(!geminiConfigured()){categoryErrors.gemini='No Gemini keys configured in Render';return null}
- if(!geminiReady()){categoryErrors.gemini='All Gemini keys are busy or cooling down';return null}
+ if(!geminiConfigured()){categoryErrors.gemini='No Gemini keys configured';return null}
+ if(!geminiReady()){categoryErrors.gemini='All usable keys temporarily busy or rate-limited';return null}
  setProvider('gemini');
- const prompt=[
-  'Generate a precise Infinite Craft themed bingo board.',
-  'You must return EXACTLY '+count+' distinct short specific recognizable targets from the exact subject '+JSON.stringify(category)+'.',
-  'Difficulty: '+difficulty+'.',
-  'Choose established in-world characters, objects, locations, creatures, mechanics, real-world places or genuine scientific phenomena as relevant.',
-  'Do not invent product brands, company names, headlines, advertisements, or general category headings.',
-  'For video games use targets from THAT game only: PAYDAY 3 is a heist game, not salaries or banks.',
-  'Never include these used/custom targets: '+JSON.stringify(excluded)+'.',
-  'Output ONLY JSON {"targets":["..."]} with EXACTLY '+count+' different standalone noun phrases.'
- ].join(' ');
- let refs='';
+ const prompt='Make an accurate themed Infinite Craft bingo board. Return exactly '+count+
+  ' real recognizable targets clearly belonging to '+category+'. Difficulty: '+difficulty+
+  '. Only genuine characters, items, places, objects and entities from this exact subject.'+
+  ' For game franchises, only entities from the stated game, no unrelated games or fake generic headings.'+
+  ' No duplicates, no invented brands. Reply with JSON {"targets":["..."]}.';
  try{
-  const research=await Promise.race([researchTopic(category).catch(()=>null),new Promise(done=>setTimeout(()=>done(null),2200))]);
-  refs=research?.pages?.slice(0,8).map(p=>p.title+': '+p.description).join(' | ').slice(0,1200)||'';
- }catch{}
- try{
-  const names=await generateGeminiJSON({
+  const result=await generateGeminiJSON({
+   model:process.env.GEMINI_BINGO_MODEL||process.env.GEMINI_MODEL||'gemini-3.5-flash',
    systemPrompt:prompt,
-   userPrompt:JSON.stringify({subject:category,difficulty,requiredCount:count,alreadyUsed:excluded,researchSnippets:refs||'none',instruction:'Return exactly '+count+' valid names, no more and no less.'}),
-   generationConfig:{temperature:.32,maxOutputTokens:Math.min(3600,950+count*110)},
-   timeoutMs:29000,
+   userPrompt:JSON.stringify({category,difficulty,exactTargetCount:count,excluded}),
+   generationConfig:{temperature:.38,maxOutputTokens:Math.min(2200,440+count*65),thinkingConfig:{thinkingLevel:'low'}},
+   timeoutMs:17000,purpose:'bingo',
    onAttempt:()=>setProvider('gemini'),
    validate:parsed=>verifiedTargets(parsed?.targets,category,count,excluded)
   });
   categoryErrors.gemini='ready';
-  return names;
+  return result;
  }catch(error){
-  categoryErrors.gemini=String(error?.message||'All Gemini keys failed').slice(0,160);
+  categoryErrors.gemini=String(error?.message||'Gemini failed').slice(0,150);
   console.warn('Gemini category unavailable:',categoryErrors.gemini);
   return null;
  }
@@ -464,16 +455,6 @@ function acceptableResult(word,a,b){
  if(/(?:Tech|Corp|Labs|Soft|Solutions|Industries)$/i.test(w.replace(/\s/g,''))&&!/(company|brand|startup|business)/i.test(a+' '+b))return false;
  return true;
 }
-async function researchPair(a,b){
- const k=pairIdentity(a,b),prior=researchCachePair.get(k);
- if(prior&&Date.now()-prior.when<1200000)return prior.text;
- let pages=[];
- try{pages=await Promise.race([multiSearch(a+' '+b+' relationship meaning'),new Promise(done=>setTimeout(()=>done([]),2400))])}catch{}
- const content=uniquePages(pages,4).map(p=>p.title+': '+p.description).join(' | ').slice(0,850);
- researchCachePair.set(k,{when:Date.now(),text:content});
- if(researchCachePair.size>120)researchCachePair.delete(researchCachePair.keys().next().value);
- return content;
-}
 async function geminiCraft(a,b,context,notify=()=>{}){
  if(!geminiConfigured()||!geminiReady())return null;
  notify('gemini');
@@ -492,8 +473,7 @@ async function cloudCraft(a,b,notify=()=>{}){
  const run=(async()=>{
   const cached=knownCombination(a,b);
   if(cached)return {crafted:cached,source:'cached'};
-  const context=geminiReady()?await researchPair(a,b):'';
-  return await geminiCraft(a,b,context,notify)||{needsLocal:true,reason:'All Gemini keys unavailable, cooling down, or busy'};
+  return await geminiCraft(a,b,'',notify)||{needsLocal:true,reason:'Gemini unavailable or rate-limited. Try the local model.'};
  })();
  pendingCloud.set(key,run);
  try{return await run}finally{pendingCloud.delete(key)}
@@ -528,4 +508,10 @@ socket.on('combine',(data,cb)=>requestCraft(data,cb,false));
 socket.on('localCombine',(data,cb)=>requestCraft(data,cb,true));
 socket.on('reset',()=>{const p=players.get(socket.id);if(!p||p.room)return;p.bank=new Set(base);socket.emit('bank',base)});
 socket.on('disconnect',()=>{leave(socket);players.delete(socket.id);localLimits.delete(socket.id)})});
-server.listen(process.env.PORT||3000,()=>console.log('Infinite Race running on port '+(process.env.PORT||3000)));
+server.listen(process.env.PORT||3000,()=>{
+ console.log('Infinite Race running on port '+(process.env.PORT||3000));
+ // Run a real, one-time tiny generation on every configured Gemini slot.
+ // The public status endpoint reports results, never secrets.
+ const check=setTimeout(()=>{void probeGeminiKeys()},1500);
+ check.unref?.();
+});
