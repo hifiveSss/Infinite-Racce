@@ -46,7 +46,9 @@ The UI displays **new combinations this session**, **total saved locally**, **kn
 
 For macOS or Linux use `node tools/local-recipe-dashboard.mjs` and open the same localhost URL. Each PC needs Node.js, Ollama, and the model installed, but **no Gemini API account or keys**. Model inference runs entirely on that computer; the catalog is downloaded from the public Infinite Race server. Once downloaded it's cached as `local-recipe-catalog-cache.json` for offline reuse.
 
-Every new result is appended immediately to `local-recipes.jsonl`; restarting doesn't lose it. Rejected model results are not stored. If you reload the server's catalog, the generator sees recipes other people have added too. The default model is Gemma 3 4B, with 1B and 12B options. More capable models generally need more memory.
+Every accepted result is appended immediately to `local-recipes.jsonl`; restarting doesn't lose it. The local Gemma prompt now demands an **existing recognizable concept**, a short explanation of how both inputs lead to it, and an explicit indication that the result is established. A quality filter rejects obvious glued names and near-mashups (like `Steamornado`, `Laketornado`, `Windornado` and `Smokedust`). It retries once with targeted feedback, then skips the pair if Gemma still can't produce a usable result. The dashboard counts these rejections and shows explanations under recent accepted combinations.
+
+Older obvious mashups are ignored when loading saved local recipes and excluded as ingredients when they are identifiable in the existing server catalog. Their original JSONL lines are **not deleted**. Previously uploaded recipes in the shared PostgreSQL database are **not automatically changed or removed**, because other players may already rely on them. The quality filter is a best-effort check: a smaller local model can still hallucinate realistic-sounding terms; review recipes before uploading large batches. If you reload the server's catalog, the generator sees recipes other people have added too. The default model is Gemma 3 4B, with 1B and 12B options. More capable models generally need more memory.
 
 ### Uploading from any computer
 

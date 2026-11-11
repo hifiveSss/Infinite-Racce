@@ -3,6 +3,7 @@
 // The only network call is an authenticated POST to the HTTPS server you specify.
 import fs from 'node:fs';
 import path from 'node:path';
+import {looksLikeGluedWords} from './recipe-quality.mjs';
 import {setTimeout as pause} from 'node:timers/promises';
 const args=Object.fromEntries(process.argv.slice(2).filter(x=>x.startsWith('--')).map(x=>{
  const [key,...rest]=x.slice(2).split('=');return [key,rest.join('=')||true]
@@ -21,7 +22,7 @@ for(const line of fs.readFileSync(file,'utf8').split(/\r?\n/)){
  if(!line.trim())continue;
  try{
   const obj=JSON.parse(line),a=String(obj.a||'').trim(),b=String(obj.b||'').trim();
-  if(!a||!b||!obj.word)continue;
+  if(!a||!b||!obj.word||looksLikeGluedWords(a,b,obj.word))continue;
   const pair=[a.toLowerCase(),b.toLowerCase()].sort().join('|');
   if(!found.has(pair))found.set(pair,{a,b,word:obj.word,emoji:obj.emoji||'✨'});
  }catch{}

@@ -89,7 +89,7 @@ export class CraftPriority{
   for(let i=queues.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[queues[i],queues[j]]=[queues[j],queues[i]]}
   this.queues=queues;this.queueIndex=0;
  }
- nextPair(known,attempted){
+ nextPair(known,attempted,excludedWords=null){
   // known/attempted use lowercased, unordered keys.
   if(this.reachable<2)return null;
   const max=Math.max(...this.byCost.keys())*2;
@@ -107,6 +107,7 @@ export class CraftPriority{
    const [i,j]=q.same?triangularPair(at,q.n):[Math.floor(at/q.m),at%q.m];
    const a=q.aa[i],b=q.bb[j],pair=[a,b].sort().join('|');
    if(this.costs.get(a)+this.costs.get(b)!==this.currentScore)continue; // costs improved mid-session
+   if(excludedWords&&(excludedWords.has(a)||excludedWords.has(b)))continue; // avoid old AI mashup ingredients
    if(known.has(pair)||attempted.has(pair))continue;
    return {a,b,pair,costA:this.costs.get(a),costB:this.costs.get(b),totalCrafts:this.currentScore};
   }
