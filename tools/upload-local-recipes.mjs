@@ -14,7 +14,7 @@ if(!server.startsWith('https://')||!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(ser
  console.error('Usage: node tools/upload-local-recipes.mjs --server=https://your-game.onrender.com --file=local-recipes.jsonl');
  process.exit(1);
 }
-if(token.length<20){console.error('Set a private RECIPE_IMPORT_TOKEN of at least 20 characters in this terminal and on Render.');process.exit(1)}
+if(token.length<8){console.error('Set RECIPE_IMPORT_TOKEN in this terminal to the same upload password configured on Render.');process.exit(1)}
 if(!fs.existsSync(file)){console.error('Recipe file not found: '+file);process.exit(1)}
 const found=new Map();
 for(const line of fs.readFileSync(file,'utf8').split(/\r?\n/)){

@@ -25,57 +25,47 @@ If your provider requires TLS, add `DATABASE_SSL=require`. Never put a database 
 
 **Important about Render storage:** A free Render Postgres database currently expires after 30 days. Use a persistent, adequately backed-up database if you want discoveries permanently saved for years. Render persistent disks are another option for files but are available only for paid services; this implementation uses PostgreSQL so players can also share across multiple server instances.
 
-## 2. Run Google Gemma locally — no Gemini API required
+## 2. Auto-combine ANY two already-made words on your computer
 
-**Gemini is a cloud service. Gemma is Google's downloadable model family.** Use [Ollama](https://ollama.com/download) to run Gemma entirely on your computer.
+The local generator now has a **browser dashboard**, running at **http://127.0.0.1:38417** on your own PC.
 
-1. Install **Node.js LTS** from https://nodejs.org/.
-2. Install Ollama from https://ollama.com/download.
-3. In Windows Terminal / Command Prompt run:
+It downloads the *complete currently recorded word and pair catalog* from Infinite Race, including the 26,906 built-in recipes, usable Infinite Craft community recipes, and shared new recipes. It then picks **two random existing words** from that entire bank. It **skips pairs that already have a recipe**, calls the locally installed Ollama model for a new result, saves the result, and adds the new word to the bank. It repeats until you press Pause or close the program. It isn't restricted to crafting outward from Water, Fire, Wind, and Earth.
 
-   ```cmd
-   ollama pull gemma3:4b
-   ```
+The UI displays **new combinations this session**, **total saved locally**, **existing recorded pairs**, **available words**, and a feed of recent combinations.
 
-4. In the downloaded Infinite Race project folder, double-click **`tools\run-local-explorer.cmd`**.
+### Quick Windows setup
 
-It explores local combinations like an automated player. Starting with **Water, Fire, Wind, Earth**, it tries pairs, asks your **local** Gemma model for a creative result, adds useful new words to its bank and starts pairing those too. It appends each useful result to `local-recipes.jsonl` so stopping with Ctrl+C or restarting doesn't lose the progress already saved. It sends **no prompts, answers or API keys** to Google.
+1. Install [Node.js LTS](https://nodejs.org/) and [Ollama](https://ollama.com/download).
+2. Run `ollama pull gemma3:4b` once to download the local model.
+3. Download the Infinite Race project to any Windows PC and double-click **`tools/run-local-explorer.cmd`**.
+4. A browser opens to **http://127.0.0.1:38417**. Click **Start auto-combining**.
 
-The default script generates up to **300 more combinations per run**. For a longer run:
+For macOS or Linux use `node tools/local-recipe-dashboard.mjs` and open the same localhost URL. Each PC needs Node.js, Ollama, and the model installed, but **no Gemini API account or keys**. Model inference runs entirely on that computer; the catalog is downloaded from the public Infinite Race server. Once downloaded it's cached as `local-recipe-catalog-cache.json` for offline reuse.
 
-```cmd
-node tools\local-recipe-explorer.mjs --model=gemma3:4b --max=2000
-```
+Every new result is appended immediately to `local-recipes.jsonl`; restarting doesn't lose it. Rejected model results are not stored. If you reload the server's catalog, the generator sees recipes other people have added too. The default model is Gemma 3 4B, with 1B and 12B options. More capable models generally need more memory.
 
-**Hardware:** Gemma 3 4B is about a 3.3 GB model download and may run on your 8 GB RX 6600 if Ollama supports the GPU/drivers, otherwise it falls back to CPU and will be slower. You can try `gemma3:1b` if the 4B model is too slow, though the combinations will usually be less clever. The very first `ollama pull` needs internet access; subsequent crafting uses only Ollama on `localhost:11434`.
+### Uploading from any computer
 
-**Note:** This is an offline model, not a substitute for the official Neal.fun server, and generated combinations are not guaranteed to be factual or funny. Test a batch of results before publishing thousands of them.
+In the dashboard enter the upload password and click **Upload saved combinations**. Set the **same value** for `RECIPE_IMPORT_TOKEN` in your Infinite Race Render web service's **Environment** section first.
 
-## 3. Import your offline results into the public shared database
+You asked to use the password `dingledongle`. If you choose that value in Render, typing it into the dashboard will work. **It isn't hardcoded in the repository or saved by the dashboard.** Since it's short and has been shared in a conversation, a longer randomly generated password is safer for a public website.
 
-After setting up the database, add another private Render variable:
+Uploads are sent over HTTPS in batches of 50 and require the persistent Postgres database (`DATABASE_URL`) to be configured. Already known pairs are skipped, and the server preserves whoever first recorded a combination.
 
-```text
-RECIPE_IMPORT_TOKEN=<a long random secret, at least 20 characters>
-```
-
-Generate your own secret (e.g. via a password manager). Don't commit it to GitHub.
-
-Then, **in your own Windows terminal** (this `set` only lasts for that terminal):
+If you'd rather use the command-line uploader, it still works with `RECIPE_IMPORT_TOKEN` as a terminal environment variable:
 
 ```cmd
-set RECIPE_IMPORT_TOKEN=your-secret-that-matches-render
+set RECIPE_IMPORT_TOKEN=your-password-matching-render
 node tools\upload-local-recipes.mjs --server=https://infinite-race.onrender.com --file=local-recipes.jsonl
 ```
 
-The uploader sends batches of 50 to an authenticated `/api/recipes/import` endpoint. Already known pairs are skipped, and the first saved result is retained. Uploaded words become premade public recipes but do not falsely award a *player* first-discovery badge.
+### Performance and limitations
 
-All local generation works without the public website. **Uploading** is optional and, naturally, needs an internet connection to your own server. Keep the uploader token secret; it can add permanent recipes.
+The full catalog can contain hundreds of thousands of existing pairs, so initial sync may take a little time. The live counter increases only after a valid recipe is written to disk. Results produced by local AI are not guaranteed to be logical or high-quality; consider checking them before uploading large batches. The local computer doesn't have to stay online after uploading; newly uploaded recipes are stored on the shared website database.
 
-## Optional: Turn off all cloud AI crafting on Render
+## 3. Optional: disable cloud AI crafting on the website
 
-If you want **the website** to only use recorded/prebuilt recipes, add \`NO_AI_CRAFTING=1\` to Render. This disables Gemini for **crafting**, so unknown pairs won't generate new results on the server. Your local PC explorer can still grow a much larger set without any Gemini API calls; import the accepted JSONL recipes when you want others to use them. Bingo category generation still uses Gemini.
-
+Add `NO_AI_CRAFTING=1` to Render to make the *website* use only recorded recipes. New locally generated recipes can still be uploaded. Themed bingo may still use Gemini for categories.
 
 ## 4. Safety and longevity
 

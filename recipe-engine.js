@@ -274,6 +274,7 @@ export function rememberSharedRecipe(a,b,recipe){
  persist();
  return recipe;
 }
+export const builtinCatalog=()=>({pairs:[...recipes.keys()].map(pair=>pair.split('|')),words:[...items.keys()]});
 export function knownCombination(a,b){
  const shared=sharedInMemory(a,b);
  if(shared)return shared;

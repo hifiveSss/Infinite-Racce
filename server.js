@@ -1,17 +1,18 @@
 import express from 'express';
 import http from 'http';
+import {gzipSync} from 'node:zlib';
 import {Server} from 'socket.io';
 import {randomInt, randomBytes, timingSafeEqual} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 // emojilib's JSON entrypoint triggers Node's import-attribute error on Render.
 // Load the installed JSON as data without going through ESM package importing.
 const emojiKeywords=JSON.parse(readFileSync(new URL('./node_modules/emojilib/dist/emoji-en-US.json',import.meta.url),'utf8'));
-import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination,rememberSharedRecipe,wasPreviouslyKnownWord} from './recipe-engine.js';
+import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination,rememberSharedRecipe,wasPreviouslyKnownWord,builtinCatalog} from './recipe-engine.js';
 import {attachBluffClub} from './bluff-club.js';
 import {attachContextCrash} from './context-crash.js';
 import {attachTeeRiot} from './tee-riot.js';
-import {loadCommunityRecipes} from './community-recipes.js';
-import {initSharedRecipes,lookupShared,publishShared,sharedRecipeStatus,validateImportRecipe} from './shared-recipes.js';
+import {loadCommunityRecipes,communityCatalog} from './community-recipes.js';
+import {initSharedRecipes,lookupShared,publishShared,sharedRecipeStatus,validateImportRecipe,sharedCatalog} from './shared-recipes.js';
 import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount,geminiKeyHealth,probeGeminiKeys} from './gemini-pool.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
@@ -19,13 +20,43 @@ attachContextCrash(io); // A separate namespace for the original out-of-context 
 attachTeeRiot(io); // Independent multiplayer namespace for the shirt-drawing championship.
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),geminiHealth:geminiKeyHealth(),...recipeStats()}));
+
+// A public, read-only compact catalog for independent offline recipe generators.
+// Only word names and ingredient pairs, never private discoverer data or keys.
+let catalogCache=null,catalogCachedAt=0;
+app.get('/api/recipes/catalog',async(req,res)=>{
+ try{
+  if(process.env.DATABASE_URL)await initSharedRecipes();
+  await loadCommunityRecipes();
+  const now=Date.now();
+  if(!catalogCache||now-catalogCachedAt>120000){
+   const built=builtinCatalog(),community=communityCatalog(),shared=sharedCatalog();
+   const words=new Set([...built.words,...community.words,...shared.words].filter(x=>typeof x==='string'&&x.length<=55));
+   const pairs=new Set();
+   for(const source of [built,community,shared])for(const pair of source.pairs){
+    if(!Array.isArray(pair)||pair.length!==2)continue;
+    pairs.add(pair.map(x=>String(x).toLowerCase().trim()).sort().join('|'));
+   }
+   // 200k+ pairs compress well and are useful on any PC without downloading AI models from Google.
+   catalogCache=gzipSync(Buffer.from(JSON.stringify({words:[...words],pairs:[...pairs]})),{level:6});
+   catalogCachedAt=now;
+  }
+  res.set('Content-Type','application/json; charset=utf-8');
+  res.set('Content-Encoding','gzip');
+  res.set('Cache-Control','public,max-age=60');
+  return res.send(catalogCache);
+ }catch(error){
+  console.warn('Recipe catalog error:',String(error.message||error).slice(0,120));
+  return res.status(503).json({ok:false,error:'Recipe catalog temporarily unavailable'});
+ }
+});
 // Admin-only upload endpoint for offline Gemma recipe generation.
 // Keep RECIPE_IMPORT_TOKEN secret. Unauthenticated clients cannot overwrite recipes.
 app.post('/api/recipes/import',express.json({limit:'384kb'}),async(req,res)=>{
  const token=String(process.env.RECIPE_IMPORT_TOKEN||'');
  const provided=String(req.headers.authorization||'').replace(/^Bearer /i,'');
  const a=Buffer.from(token),b=Buffer.from(provided);
- if(token.length<20||a.length!==b.length||!timingSafeEqual(a,b)){
+ if(token.length<8||a.length!==b.length||!timingSafeEqual(a,b)){
   return res.status(401).json({ok:false,error:'Not authorized'});
  }
  const records=req.body?.recipes;

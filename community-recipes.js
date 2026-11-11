@@ -12,6 +12,7 @@ let loadPromise=null,lastError=null,loadedAt=null,sourceCount=0,uniqueItems=0,di
 const acceptable=name=>typeof name==='string'&&name.length>=2&&name.length<=55&&
  /^[A-Za-z0-9][A-Za-z0-9 '&!. -]*$/.test(name)&&!/^Nothing$|^undefined$|^A\+B$/i.test(name);
 export const communityKnownCombination=(a,b)=>lookup.get(key(a,b))||null;
+export const communityCatalog=()=>({pairs:[...lookup.keys()].map(pair=>pair.split('|')),words:[...knownWords]});
 export const communityHasWord=word=>!loadedAt||knownWords.has(String(word).trim().toLowerCase());
 export const communityRecipeStats=()=>({
  communityRecipes:lookup.size,

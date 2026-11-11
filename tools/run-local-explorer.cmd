@@ -2,31 +2,27 @@
 setlocal
 cd /d "%~dp0.."
 echo.
-echo =====================================
-echo   INFINITE RACE LOCAL AI EXPLORER
-echo =====================================
+echo ============================================
+echo  INFINITE RACE - LOCAL AUTO-COMBINER
+echo ============================================
 echo.
 where node >nul 2>&1
 if errorlevel 1 (
-  echo Node.js is missing. Install the LTS version from https://nodejs.org/
-  pause
-  exit /b 1
+ echo Install Node.js from https://nodejs.org/
+ pause
+ exit /b 1
 )
 where ollama >nul 2>&1
 if errorlevel 1 (
-  echo Ollama is missing. Install it from https://ollama.com/download
-  pause
-  exit /b 1
+ echo Install Ollama from https://ollama.com/download
+ pause
+ exit /b 1
 )
-echo Use this ONE TIME to install your local model:
-echo     ollama pull gemma3:4b
 echo.
-echo Want something smaller and faster but less clever? Use:
-echo     ollama pull gemma3:1b
-echo.
-echo Default: 300 additional recipes. Change it with --max=1000
-echo.
-node tools\local-recipe-explorer.mjs --model=gemma3:4b --max=300
-echo.
-echo Your discoveries were saved to local-recipes.jsonl
-pause
+echo First-time model install: ollama pull gemma3:4b
+echo Opening the local dashboard...
+start "Infinite Race Auto-Combiner" cmd /k "node tools\local-recipe-dashboard.mjs"
+timeout /t 3 /nobreak >nul
+start "" "http://127.0.0.1:38417"
+echo The generator runs in the other Command Prompt window.
+echo Close that window to stop the local service. Saved recipes stay on disk.
