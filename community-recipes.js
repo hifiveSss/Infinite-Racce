@@ -5,12 +5,14 @@
 // The dataset is incomplete; an unrecorded pair is not the same as a failed pair.
 const DATA_URL='https://icscdn.vantezzen.io/recipes.json';
 const lookup=new Map();
+const knownWords=new Set();
 const emojiFallback='✨';
 const key=(a,b)=>[String(a).trim().toLocaleLowerCase('en'),String(b).trim().toLocaleLowerCase('en')].sort().join('|');
 let loadPromise=null,lastError=null,loadedAt=null,sourceCount=0,uniqueItems=0,discarded=0;
 const acceptable=name=>typeof name==='string'&&name.length>=2&&name.length<=55&&
  /^[A-Za-z0-9][A-Za-z0-9 '&!. -]*$/.test(name)&&!/^Nothing$|^undefined$|^A\+B$/i.test(name);
 export const communityKnownCombination=(a,b)=>lookup.get(key(a,b))||null;
+export const communityHasWord=word=>!loadedAt||knownWords.has(String(word).trim().toLowerCase());
 export const communityRecipeStats=()=>({
  communityRecipes:lookup.size,
  communityLoaded:loadedAt!==null,
@@ -38,6 +40,7 @@ export function loadCommunityRecipes(){
    if(data.recipes.length>2000000||data.items.length>2000000)throw Error('Dataset is unexpectedly large');
    const items=data.items,records=data.recipes;
    uniqueItems=items.length;sourceCount=records.length;
+   for(const item of items)if(typeof item==='string')knownWords.add(item.trim().toLowerCase());
    const temp=new Map();
    let skipped=0;
    for(const row of records){

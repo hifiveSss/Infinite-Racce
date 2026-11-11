@@ -8,7 +8,8 @@
   "dependencies": {
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
-    "emojilib": "^4.0.3"
+    "emojilib": "^4.0.3",
+    "pg": "^8.16.3"
   },
   "engines": {
     "node": ">=18"

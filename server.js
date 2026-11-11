@@ -1,16 +1,17 @@
 import express from 'express';
 import http from 'http';
 import {Server} from 'socket.io';
-import {randomInt, randomBytes} from 'node:crypto';
+import {randomInt, randomBytes, timingSafeEqual} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 // emojilib's JSON entrypoint triggers Node's import-attribute error on Render.
 // Load the installed JSON as data without going through ESM package importing.
 const emojiKeywords=JSON.parse(readFileSync(new URL('./node_modules/emojilib/dist/emoji-en-US.json',import.meta.url),'utf8'));
-import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination} from './recipe-engine.js';
+import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,registerLocalCombination,rememberSharedRecipe,wasPreviouslyKnownWord} from './recipe-engine.js';
 import {attachBluffClub} from './bluff-club.js';
 import {attachContextCrash} from './context-crash.js';
 import {attachTeeRiot} from './tee-riot.js';
 import {loadCommunityRecipes} from './community-recipes.js';
+import {initSharedRecipes,lookupShared,publishShared,sharedRecipeStatus,validateImportRecipe} from './shared-recipes.js';
 import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount,geminiKeyHealth,probeGeminiKeys} from './gemini-pool.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
@@ -18,6 +19,33 @@ attachContextCrash(io); // A separate namespace for the original out-of-context 
 attachTeeRiot(io); // Independent multiplayer namespace for the shirt-drawing championship.
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),geminiHealth:geminiKeyHealth(),...recipeStats()}));
+// Admin-only upload endpoint for offline Gemma recipe generation.
+// Keep RECIPE_IMPORT_TOKEN secret. Unauthenticated clients cannot overwrite recipes.
+app.post('/api/recipes/import',express.json({limit:'384kb'}),async(req,res)=>{
+ const token=String(process.env.RECIPE_IMPORT_TOKEN||'');
+ const provided=String(req.headers.authorization||'').replace(/^Bearer /i,'');
+ const a=Buffer.from(token),b=Buffer.from(provided);
+ if(token.length<20||a.length!==b.length||!timingSafeEqual(a,b)){
+  return res.status(401).json({ok:false,error:'Not authorized'});
+ }
+ const records=req.body?.recipes;
+ if(!Array.isArray(records)||records.length>50||records.length===0)return res.status(400).json({ok:false,error:'Send 1–50 recipes.'});
+ if(!await initSharedRecipes())return res.status(503).json({ok:false,error:'Persistent database unavailable. Set DATABASE_URL first.'});
+ let accepted=0,skipped=0,rejected=0;
+ try{
+  for(const record of records){
+   const recipe=validateImportRecipe(record);
+   if(!recipe){rejected++;continue}
+   if(knownCombination(recipe.a,recipe.b)||await lookupShared(recipe.a,recipe.b)){skipped++;continue}
+   const result=await publishShared({...recipe,source:'import',discoverer:'Local Builder',existingWord:true});
+   if(!result.persisted){rejected++;continue}
+   rememberSharedRecipe(recipe.a,recipe.b,result.recipe);
+   if(result.inserted)accepted++;else skipped++;
+  }
+  res.json({ok:true,accepted,skipped,rejected,stored:sharedRecipeStatus().sharedRecipes});
+ }catch(error){console.error('Recipe import failed:',error.message);res.status(503).json({ok:false,error:'Database write failed; retry later.'})}
+});
+
 
 /* Internet research for AI crafting and bingo.
  Public no-key sources: Bing RSS search, Wikipedia, Wikidata.
@@ -441,8 +469,8 @@ socket.on('voteRestart',(data,cb)=>{
  cb?.({ok:true});
 });
 socket.on('submitBattle',(raw,cb)=>{const p=players.get(socket.id),room=rooms.get(p?.room);if(!room||room.mode!=='battle'||room.phase!=='racing')return ackError(cb,'No active battle');if(Date.now()>room.endsAt)return ackError(cb,'Time is up');const word=String(raw||'').trim();if(!p.bank.has(word)||base.includes(word))return ackError(cb,'Discover an item first');room.submissions[socket.id]=word;emitRoom(room);cb?.({ok:true})});
-async function commitCraft(p,room,round,crafted,cb,source='cached'){
-const {word:result,emoji:originalEmoji}=crafted;const emoji=originalEmoji&&originalEmoji!=='✨'?originalEmoji:appropriateEmoji(result);if(!players.has(socket.id)||players.get(socket.id)!==p)return ackError(cb,'Player disconnected');const current=rooms.get(p.room);if(room&&(current!==room||current.round!==round||current.phase!=='racing'))return ackError(cb,'The round changed while crafting. Try in the next race.');const fresh=!p.bank.has(result);p.bank.add(result);socket.emit('bank',[...p.bank]);io.emit('emoji',{word:result,emoji});cb?.({ok:true,result,emoji,fresh,source});if(!current)return;const winKey=normalize(result);if(current.mode==='word'&&winKey===normalize(current.target)){finish(current,[socket.id],`Discovered ${current.target}!`);return}if(current.mode==='battle'){emitRoom(current);return}if(current.mode==='bingo'){const index=current.board.findIndex((word,i)=>normalize(word)===winKey&&current.owners[i]===null);if(index!==-1){current.owners[index]=socket.id;io.to(current.code).emit('claim',{index,word:current.board[index],player:p.name,id:socket.id});const reason=checkBingo(current,socket.id);if(reason){finish(current,[socket.id],reason);return}if(current.owners.every(x=>x!==null)){const totals=scores(current),top=Math.max(...Object.values(totals));finish(current,Object.keys(totals).filter(id=>totals[id]===top),`Board filled — highest score: ${top}`);return}}}emitRoom(current) }
+async function commitCraft(p,room,round,crafted,cb,source='cached',firstDiscovery=false){
+const {word:result,emoji:originalEmoji}=crafted;const emoji=originalEmoji&&originalEmoji!=='✨'?originalEmoji:appropriateEmoji(result);if(!players.has(socket.id)||players.get(socket.id)!==p)return ackError(cb,'Player disconnected');const current=rooms.get(p.room);if(room&&(current!==room||current.round!==round||current.phase!=='racing'))return ackError(cb,'The round changed while crafting. Try in the next race.');const fresh=!p.bank.has(result);p.bank.add(result);socket.emit('bank',[...p.bank]);io.emit('emoji',{word:result,emoji});cb?.({ok:true,result,emoji,fresh,source,firstDiscovery});if(!current)return;const winKey=normalize(result);if(current.mode==='word'&&winKey===normalize(current.target)){finish(current,[socket.id],`Discovered ${current.target}!`);return}if(current.mode==='battle'){emitRoom(current);return}if(current.mode==='bingo'){const index=current.board.findIndex((word,i)=>normalize(word)===winKey&&current.owners[i]===null);if(index!==-1){current.owners[index]=socket.id;io.to(current.code).emit('claim',{index,word:current.board[index],player:p.name,id:socket.id});const reason=checkBingo(current,socket.id);if(reason){finish(current,[socket.id],reason);return}if(current.owners.every(x=>x!==null)){const totals=scores(current),top=Math.max(...Object.values(totals));finish(current,Object.keys(totals).filter(id=>totals[id]===top),`Board filled — highest score: ${top}`);return}}}emitRoom(current) }
 
 
 
@@ -479,13 +507,34 @@ async function cloudCraft(a,b,notify=()=>{}){
  pendingCloud.set(key,run);
  try{return await run}finally{pendingCloud.delete(key)}
 }
+async function persistDiscovery(a,b,crafted,source,player){
+ const old=await lookupShared(a,b);
+ if(old)return {crafted:old,source:'cached',firstDiscovery:false};
+ const published=await publishShared({
+  a,b,word:crafted.word,emoji:crafted.emoji,source,discoverer:player?.name||'Player',
+  existingWord:wasPreviouslyKnownWord(crafted.word)
+ });
+ if(published.persisted)rememberSharedRecipe(a,b,published.recipe);
+ return {crafted:published.recipe,source:published.recipe.word===crafted.word?source:'cached',
+  firstDiscovery:published.firstDiscovery};
+}
 async function requestCraft(data,cb,localProposal=false){
  const p=players.get(socket.id);if(!p)return;
  const a=String(data?.a||'').slice(0,60),b=String(data?.b||'').slice(0,60);
  if(!p.bank.has(a)||!p.bank.has(b))return ackError(cb,'You must discover both ingredients first');
  const room=rooms.get(p.room),round=room?.round;
  if(room&&room.phase!=='racing')return ackError(cb,room.phase==='finished'?'Race finished. Wait for another race.':'Wait for the host to start');
- let crafted=knownCombination(a,b),source='cached';
+ if(process.env.DATABASE_URL)await initSharedRecipes();
+ let crafted=knownCombination(a,b),source='cached',firstDiscovery=false;
+ if(!crafted){
+  try{crafted=await lookupShared(a,b)}
+  catch(error){
+   console.warn('Database lookup failed:',error.message);
+   if(process.env.DATABASE_URL)return ackError(cb,'Shared recipe database is currently unavailable.');
+  }
+ }
+ if(!crafted&&process.env.DATABASE_URL&&!sharedRecipeStatus().databaseReady)
+  return ackError(cb,'The permanent recipe database is unavailable. Existing recipes still work.');
  if(process.env.NO_AI_CRAFTING==='1'&&localProposal&&!crafted)return cb?.({ok:false,error:'Offline-only crafting is enabled. Try a recorded combination.'});
  if(!crafted&&!localProposal){
   if(process.env.NO_AI_CRAFTING==='1')return cb?.({ok:false,error:'No recorded offline result for this pair. Try different ingredients.'});
@@ -505,7 +554,16 @@ async function requestCraft(data,cb,localProposal=false){
   }catch(error){return ackError(cb,error.message)}
  }
  if(!crafted)return cb?.({ok:false,needsLocal:true});
- return commitCraft(p,room,round,crafted,cb,source);
+ if(source!=='cached'&&source!=='shared'){
+  try{
+   const published=await persistDiscovery(a,b,crafted,source,p);
+   crafted=published.crafted;source=published.source;firstDiscovery=published.firstDiscovery;
+  }catch(error){
+   console.warn('Unable to save shared recipe:',error.message);
+   if(process.env.DATABASE_URL)return ackError(cb,'Could not save this discovery permanently. Try again.');
+  }
+ }
+ return commitCraft(p,room,round,crafted,cb,source,firstDiscovery);
 }
 socket.on('combine',(data,cb)=>requestCraft(data,cb,false));
 socket.on('localCombine',(data,cb)=>requestCraft(data,cb,true));
@@ -516,6 +574,7 @@ server.listen(process.env.PORT||3000,()=>{
  // Run a real, one-time tiny generation on every configured Gemini slot.
  // The public status endpoint reports results, never secrets.
  void loadCommunityRecipes();
+ void initSharedRecipes();
  const check=setTimeout(()=>{void probeGeminiKeys()},1500);
  check.unref?.();
 });

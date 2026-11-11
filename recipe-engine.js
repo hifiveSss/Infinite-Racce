@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {generateGeminiJSON,geminiConfigured} from './gemini-pool.js';
 import {expandSpecificRecipes} from './recipe-expansion.js';
-import {communityKnownCombination,communityRecipeStats} from './community-recipes.js';
+import {communityKnownCombination,communityRecipeStats,communityHasWord} from './community-recipes.js';
+import {sharedInMemory,sharedRecipeStatus} from './shared-recipes.js';
 
 // Stable, order-independent combinations. Emoji are standard Unicode emoji.
 export const starters = ['Water', 'Fire', 'Wind', 'Earth'];
@@ -229,7 +230,7 @@ const specificAttempted=expandSpecificRecipes((a,b,word,emoji)=>{
 const offlineRecipeCount=recipes.size;
 const builtinKeys=new Set(recipes.keys());
 const dynamicKeys=new Set();
-export const recipeStats=()=>({offlineRecipes:offlineRecipeCount,previousRecipes:previousRecipeCount,specificRecipes:specificKeys.size,newSpecificRecipes:specificNew,improvedExistingRecipes:specificOverrides,generatedPatterns:specificAttempted,cachedRecipes:dynamicKeys.size,totalRecipes:recipes.size,...communityRecipeStats(),depthExample:'Eternal Multiverse',depthAdditionalSteps:longChain.length});
+export const recipeStats=()=>({offlineRecipes:offlineRecipeCount,previousRecipes:previousRecipeCount,specificRecipes:specificKeys.size,newSpecificRecipes:specificNew,improvedExistingRecipes:specificOverrides,generatedPatterns:specificAttempted,cachedRecipes:dynamicKeys.size,totalRecipes:recipes.size,...communityRecipeStats(),...sharedRecipeStatus(),depthExample:'Eternal Multiverse',depthAdditionalSteps:longChain.length});
 const storePath=process.env.RECIPE_CACHE_PATH||path.resolve('recipes-cache.json');
 try{
  const saved=JSON.parse(fs.readFileSync(storePath,'utf8'));
@@ -262,7 +263,20 @@ function persist(){
  cacheTimer=setTimeout(()=>{cacheTimer=null;void flushCache()},8000);
  cacheTimer.unref?.();
 }
+const existingWords=new Set([...items.keys()].map(x=>x.toLowerCase()));
+export const wasPreviouslyKnownWord=word=>existingWords.has(String(word).trim().toLowerCase())||communityHasWord(word);
+export function rememberSharedRecipe(a,b,recipe){
+ const k=pairKey(a,b);
+ recipes.set(k,{word:recipe.word,emoji:recipe.emoji});
+ items.set(recipe.word,recipe.emoji);
+ dynamicKeys.add(k);
+ // The remote DB is canonical; the local cache only improves warm-start speed.
+ persist();
+ return recipe;
+}
 export function knownCombination(a,b){
+ const shared=sharedInMemory(a,b);
+ if(shared)return shared;
  const fromCommunity=communityKnownCombination(a,b);
  if(fromCommunity)return {word:fromCommunity.word,emoji:items.get(fromCommunity.word)||fromCommunity.emoji};
  return recipes.get(pairKey(a,b))||null;

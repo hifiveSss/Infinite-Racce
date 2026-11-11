@@ -1,5 +1,11 @@
 # The Game Room — Four multiplayer browser games
 
+## Shared First Discoveries & fully local AI
+
+**New:** You can make new combinations permanent for everyone with PostgreSQL, see a special **✨ FIRST DISCOVERY!** label under the word when you genuinely discover an unseen item, and generate thousands more combinations on your own Windows PC with Google Gemma 3 + Ollama (no Gemini API).
+
+**Setup:** [Shared database and local Gemma recipe generator](SHARED_DISCOVERIES_LOCAL_AI.md).
+
 The site now starts with four playable games:
 
 - **Infinite Race** — `/race.html` (crafting, races, bingo and elimination battles).
