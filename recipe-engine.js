@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {generateGeminiJSON,geminiConfigured} from './gemini-pool.js';
 import {expandSpecificRecipes} from './recipe-expansion.js';
+import {communityKnownCombination,communityRecipeStats} from './community-recipes.js';
 
 // Stable, order-independent combinations. Emoji are standard Unicode emoji.
 export const starters = ['Water', 'Fire', 'Wind', 'Earth'];
@@ -228,7 +229,7 @@ const specificAttempted=expandSpecificRecipes((a,b,word,emoji)=>{
 const offlineRecipeCount=recipes.size;
 const builtinKeys=new Set(recipes.keys());
 const dynamicKeys=new Set();
-export const recipeStats=()=>({offlineRecipes:offlineRecipeCount,previousRecipes:previousRecipeCount,specificRecipes:specificKeys.size,newSpecificRecipes:specificNew,improvedExistingRecipes:specificOverrides,generatedPatterns:specificAttempted,cachedRecipes:dynamicKeys.size,totalRecipes:recipes.size,depthExample:'Eternal Multiverse',depthAdditionalSteps:longChain.length});
+export const recipeStats=()=>({offlineRecipes:offlineRecipeCount,previousRecipes:previousRecipeCount,specificRecipes:specificKeys.size,newSpecificRecipes:specificNew,improvedExistingRecipes:specificOverrides,generatedPatterns:specificAttempted,cachedRecipes:dynamicKeys.size,totalRecipes:recipes.size,...communityRecipeStats(),depthExample:'Eternal Multiverse',depthAdditionalSteps:longChain.length});
 const storePath=process.env.RECIPE_CACHE_PATH||path.resolve('recipes-cache.json');
 try{
  const saved=JSON.parse(fs.readFileSync(storePath,'utf8'));
@@ -261,10 +262,14 @@ function persist(){
  cacheTimer=setTimeout(()=>{cacheTimer=null;void flushCache()},8000);
  cacheTimer.unref?.();
 }
-export function knownCombination(a,b){return recipes.get(pairKey(a,b))||null}
+export function knownCombination(a,b){
+ const fromCommunity=communityKnownCombination(a,b);
+ if(fromCommunity)return {word:fromCommunity.word,emoji:items.get(fromCommunity.word)||fromCommunity.emoji};
+ return recipes.get(pairKey(a,b))||null;
+}
 export function registerLocalCombination(a,b,word,emoji){
  const k=pairKey(a,b);
- if(recipes.has(k))return recipes.get(k);
+ if(knownCombination(a,b))return knownCombination(a,b);
  word=String(word||'').trim().replace(/\s+/g,' ');
  emoji=String(emoji||'✨').trim().slice(0,16)||'✨';
  if(badResult(word,a,b)||word.split(' ').length>5||!/^[A-Za-z0-9][A-Za-z0-9 '&\-!.]*$/.test(word))throw Error('Local AI gave an invalid result. Try again.');
@@ -298,7 +303,8 @@ async function askAI(a,b,context=''){
 }
 export async function combine(a,b,context=''){
  const k=pairKey(a,b);
- if(recipes.has(k))return recipes.get(k);
+ const found=knownCombination(a,b);
+ if(found)return found;
  if(!geminiConfigured())throw new Error('Gemini is not configured. Add GEMINI_API_KEY_1 through GEMINI_API_KEY_5 in Render.');
  if(pending.has(k))return pending.get(k);
  const task=(async()=>{

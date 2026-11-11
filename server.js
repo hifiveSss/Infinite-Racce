@@ -10,6 +10,7 @@ import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,
 import {attachBluffClub} from './bluff-club.js';
 import {attachContextCrash} from './context-crash.js';
 import {attachTeeRiot} from './tee-riot.js';
+import {loadCommunityRecipes} from './community-recipes.js';
 import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount,geminiKeyHealth,probeGeminiKeys} from './gemini-pool.js';
 const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
@@ -485,7 +486,9 @@ async function requestCraft(data,cb,localProposal=false){
  const room=rooms.get(p.room),round=room?.round;
  if(room&&room.phase!=='racing')return ackError(cb,room.phase==='finished'?'Race finished. Wait for another race.':'Wait for the host to start');
  let crafted=knownCombination(a,b),source='cached';
+ if(process.env.NO_AI_CRAFTING==='1'&&localProposal&&!crafted)return cb?.({ok:false,error:'Offline-only crafting is enabled. Try a recorded combination.'});
  if(!crafted&&!localProposal){
+  if(process.env.NO_AI_CRAFTING==='1')return cb?.({ok:false,error:'No recorded offline result for this pair. Try different ingredients.'});
   const remote=await cloudCraft(a,b,source=>socket.emit('craftThinking',{a,b,source}));
   if(remote.needsLocal){socket.emit('craftThinking',{a,b,source:'local'});return cb?.({ok:false,needsLocal:true,reason:remote.reason})}
   crafted=remote.crafted;source=remote.source;
@@ -512,6 +515,7 @@ server.listen(process.env.PORT||3000,()=>{
  console.log('Infinite Race running on port '+(process.env.PORT||3000));
  // Run a real, one-time tiny generation on every configured Gemini slot.
  // The public status endpoint reports results, never secrets.
+ void loadCommunityRecipes();
  const check=setTimeout(()=>{void probeGeminiKeys()},1500);
  check.unref?.();
 });

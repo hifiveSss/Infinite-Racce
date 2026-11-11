@@ -28,6 +28,23 @@ Multiplayer browser crafting game with word racing, colored bingo and timed powe
 
 Free Render instances sleep between visits; in-memory lobby state and player discoveries are not persistent across server restarts. Gemini free API quotas also apply. Do not put API secrets in GitHub or client-side code.
 
+## Community Infinite Craft recipe database (no AI for recorded pairs)
+
+Infinite Race now downloads an **existing community dataset** of up to 205,626 recorded Infinite Craft recipes into the server's memory when it starts. It uses this as the **first lookup for every craft**. A recorded pair returns immediately with **no Gemini, local AI or API request**.
+
+Dataset source and credit: [Infinite Craft Solver by vantezzen](https://github.com/vantezzen/infinite-craft-solver), [project explanation](https://vantezzen.io/project/infinite-craft-solver). The creator explicitly offers the recipe archive for reuse. Data is from a 2024 community crawl, so it is not a complete or current snapshot of all possible pairs.
+
+- Live status: \`/api/status\` contains \`communityRecipes\`, \`communityLoaded\`, \`communitySourceRecipes\`, \`communityElements\`, \`communityDiscarded\`, \`communityError\`.
+- The server downloads the compact JSON (approximately 3.8 MB) at startup. If downloading fails, the built-in 26,906 recipes still work, with Gemini for unknown pairs.
+- Existing built-in recipe count and community recipe count are **reported separately**, because the two sets overlap; do not add them to claim a unique combined total.
+- Pairs are order-independent, outputs are sanity-filtered, and the public app does not query neal.fun directly or scrape it.
+- Normal mode: recorded community combinations → built-in recipes → Gemini for completely unknown pairs, optionally local model if Gemini fails.
+- **Strict no-AI crafting:** set \`NO_AI_CRAFTING=1\` on Render and restart. Then recorded combinations work with zero crafting AI calls, while unrecorded pairs return a gentle "No recorded result" error. This option applies to crafting only; themed bingo still uses Gemini.
+- Set \`DISABLE_COMMUNITY_RECIPES=1\` to turn off the downloaded dataset.
+
+The much larger 21M community crawl exists but has **unclear reuse rights**. It's not bundled here. Likewise the smaller solver archive is attributed rather than presented as our own data.
+
+
 ## November 2026: Faster crafting and verified Gemini slots
 
 The built-in recipe library now has **26,906 unique unordered ingredient pairs** — **3,197 new deterministic recipes** beyond the previous 23,709, plus **94 replacements** of generic recipes with more specific outcomes. The new recipes are mainly real food preparation, countries and capitals, colours, and established science/game combinations. They never require AI or quota. These counts are validated at startup via \`recipeStats()\`.
