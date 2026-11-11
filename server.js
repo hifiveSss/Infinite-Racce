@@ -32,13 +32,23 @@ app.get('/api/recipes/catalog',async(req,res)=>{
   if(!catalogCache||now-catalogCachedAt>120000){
    const built=builtinCatalog(),community=communityCatalog(),shared=sharedCatalog();
    const words=new Set([...built.words,...community.words,...shared.words].filter(x=>typeof x==='string'&&x.length<=55));
-   const pairs=new Set();
-   for(const source of [built,community,shared])for(const pair of source.pairs){
-    if(!Array.isArray(pair)||pair.length!==2)continue;
-    pairs.add(pair.map(x=>String(x).toLowerCase().trim()).sort().join('|'));
+   // Include recipe RESULTS, not just ingredient names: the local auto-crafter
+   // needs the full dependency graph to calculate shortest crafting paths.
+   // Match the game's priority: builtin < community < permanent shared.
+   const recipes=new Map();
+   for(const source of [built,community,shared])for(const row of source.recipes){
+    if(!Array.isArray(row)||row.length!==3)continue;
+    const [a,b,result]=row;
+    if(typeof a!=='string'||typeof b!=='string'||typeof result!=='string'||!result.trim())continue;
+    const pair=[a.trim().toLowerCase(),b.trim().toLowerCase()].sort().join('|');
+    recipes.set(pair,result.trim());
    }
-   // 200k+ pairs compress well and are useful on any PC without downloading AI models from Google.
-   catalogCache=gzipSync(Buffer.from(JSON.stringify({words:[...words],pairs:[...pairs]})),{level:6});
+   const entries=[...recipes];
+   const triples=entries.map(([pair,result])=>[...pair.split('|'),result]);
+   // Keep "pairs" for compatibility with older locally downloaded tools.
+   catalogCache=gzipSync(Buffer.from(JSON.stringify({
+    version:2,words:[...words],pairs:entries.map(([pair])=>pair),recipes:triples
+   })),{level:6});
    catalogCachedAt=now;
   }
   res.set('Content-Type','application/json; charset=utf-8');

@@ -29,9 +29,13 @@ If your provider requires TLS, add `DATABASE_SSL=require`. Never put a database 
 
 The local generator now has a **browser dashboard**, running at **http://127.0.0.1:38417** on your own PC.
 
-It downloads the *complete currently recorded word and pair catalog* from Infinite Race, including the 26,906 built-in recipes, usable Infinite Craft community recipes, and shared new recipes. It then picks **two random existing words** from that entire bank. It **skips pairs that already have a recipe**, calls the locally installed Ollama model for a new result, saves the result, and adds the new word to the bank. It repeats until you press Pause or close the program. It isn't restricted to crafting outward from Water, Fire, Wind, and Earth.
+It downloads the complete **existing recipe graph**, including the ingredient pair **and its result**, from Infinite Race: the built-in, community and shared saved recipes. It calculates the **fewest known crafting operations needed to reach each word from Water, Fire, Wind and Earth**. It then tries *unrecorded* ingredient pairs in ascending order of their **combined crafting cost**, randomising within equal-difficulty groups. That means beginner-level ingredients come first, not random late-game nonsense like Dingleflower + PeanutButterHair.
 
-The UI displays **new combinations this session**, **total saved locally**, **existing recorded pairs**, **available words**, and a feed of recent combinations.
+Words with **no known path from the four starter elements are excluded**, rather than pretending they are easy. When a new recipe is made, its resulting word gets a crafting cost and may unlock more reachable words through existing recipes. These newly reachable recipes are ranked automatically. Every valid result is saved locally and used in future attempts.
+
+The dashboard offers a difficulty limit: **Very easy (4 crafts), Common (8 crafts, default), More variety (12), Deep (20), or No limit**. The number means the combined cost to reach *both input words*; a new combination itself adds one more craft. You can raise the limit whenever the easier pairs have been explored.
+
+The UI displays **new combinations this session**, **total saved locally**, **known recorded pairs**, **words reachable from the starters**, and crafting costs in its recent-discovery feed.
 
 ### Quick Windows setup
 
@@ -61,7 +65,7 @@ node tools\upload-local-recipes.mjs --server=https://infinite-race.onrender.com 
 
 ### Performance and limitations
 
-The full catalog can contain hundreds of thousands of existing pairs, so initial sync may take a little time. The live counter increases only after a valid recipe is written to disk. Results produced by local AI are not guaranteed to be logical or high-quality; consider checking them before uploading large batches. The local computer doesn't have to stay online after uploading; newly uploaded recipes are stored on the shared website database.
+The full catalog includes hundreds of thousands of recipes **with their outputs**, so initial download and shortest-path calculation may take a little time. The live counter increases only after a valid recipe is written to disk. Results produced by local AI are not guaranteed to be logical or high-quality; consider checking them before uploading large batches. The local computer doesn't have to stay online after uploading; newly uploaded recipes are stored on the shared website database.
 
 ## 3. Optional: disable cloud AI crafting on the website
 
