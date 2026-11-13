@@ -1,4 +1,5 @@
 import * as THREE from '/vendor/three.module.js';
+window.__strikeBoot={stage:'starting',ready:false,error:null};
 
 // Original 3D arena and procedural footballers: no licensed game assets.
 const $=id=>document.getElementById(id),show=(id,visible)=>$(id).classList.toggle('hidden',!visible);
@@ -27,9 +28,16 @@ function toast(message){
  $('toast').textContent=String(message).slice(0,190);$('toast').classList.add('show');
  clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2800);
 }
-function ack(event,data,success){
+function ack(event,data,success,failure){
+ let settled=false;
+ const timeout=setTimeout(()=>{
+  if(settled)return;settled=true;
+  toast('Server response timed out. Check your connection and retry.');
+  failure?.();
+ },11000);
  socket.emit(event,data,r=>{
-  if(!r?.ok){toast(r?.error||'Could not complete that action.');return}
+  if(settled)return;settled=true;clearTimeout(timeout);
+  if(!r?.ok){toast(r?.error||'Could not complete that action.');failure?.();return}
   success?.(r);
  });
 }
@@ -42,11 +50,14 @@ try{$('nick').value=localStorage.getItem('neonStrikeName')||''}catch{}
 const params=new URLSearchParams(location.search);
 if(params.has('room'))$('roomInput').value=params.get('room').slice(0,6).toUpperCase();
 function create(quick=false){
+ $('quick').disabled=true;$('create').disabled=true;
+ $('quick').textContent='CONNECTING...';
+ const reset=()=>{$('quick').disabled=false;$('create').disabled=false;$('quick').textContent='⚡ PLAY NOW — VS BOTS'};
  ack('create',{name:nickname()},r=>{
-  myId=socket.id;
+  reset();myId=socket.id;
   history.replaceState(null,'','/strike.html?room='+r.code);
   if(quick)ack('start',{},()=>toast('Kickoff! Click the pitch for camera controls.'));
- });
+ },reset);
 }
 $('quick').onclick=()=>create(true);
 $('create').onclick=()=>create(false);
@@ -621,6 +632,7 @@ function frame(now){
  renderer.render(scene,camera);
 }
 requestAnimationFrame(frame);
+window.__strikeBoot.stage='running';window.__strikeBoot.ready=true;
 function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
 window.addEventListener('resize',resize);
 syncUI();

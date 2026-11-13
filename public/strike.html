@@ -122,6 +122,7 @@ button:focus-visible,input:focus-visible{outline:3px solid #ddffa3;outline-offse
    <div class="actions"><button class="btn primary" id="quick">⚡ PLAY NOW — VS BOTS</button><button class="btn secondary" id="create">CREATE PRIVATE MATCH</button></div>
    <div class="menuRow"><input id="roomInput" class="input" placeholder="FRIEND'S ROOM CODE" maxlength="6" aria-label="Friend room code" autocomplete="off"><button class="btn secondary" id="join">JOIN MATCH</button></div>
    <p class="smallPrint">Share a private room with friends or fill the field with AI teammates and opponents.</p>
+   <p class="smallPrint" id="startStatus" role="status" aria-live="polite">INITIALISING 3D ENGINE...</p>
   </div>
   <div class="hintPanel"><span><span class="key">W A S D</span> Move</span><span><span class="key">MOUSE</span> Aim & camera</span><span><span class="key">LEFT CLICK</span> Charge & shoot</span><span><span class="key">RIGHT CLICK</span> Pass</span><span><span class="key">F</span> Tackle</span></div>
  </div>
@@ -161,6 +162,35 @@ button:focus-visible,input:focus-visible{outline:3px solid #ddffa3;outline-offse
 <div id="helpModal" class="modal hidden"><div class="helpWindow"><div class="eyebrow">CONTROLS</div><h2>OWN THE PITCH.</h2><div class="keysGrid"><div><b>W / A / S / D</b><div>Move relative to where you're looking</div></div><div><b>MOUSE</b><div>Turn and aim. Click to lock the camera</div></div><div><b>SHIFT</b><div>Sprint (uses stamina)</div></div><div><b>HOLD LEFT CLICK</b><div>Charge a shot. Release to fire</div></div><div><b>RIGHT CLICK / K</b><div>Pass towards a teammate</div></div><div><b>F / SPACE</b><div>Lunge tackle / steal possession</div></div><div><b>Q</b><div>Chip or loft the ball</div></div><div><b>E</b><div>Call for a pass from a bot teammate</div></div><div><b>H / ESC</b><div>View controls / release mouse</div></div><div><b>GAMEPAD</b><div>Left stick move, right stick aim, RT shoot, RB pass, X tackle</div></div></div><button id="helpClose" class="btn primary">BACK TO THE PITCH</button></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="/socket.io/socket.io.js"></script>
+<script>
+(function(){
+ var status=document.getElementById('startStatus');
+ window.__strikeFirstError=null;
+ window.addEventListener('error',function(e){
+  var message=e.message||'';
+  if(message&&!window.__strikeFirstError){
+   window.__strikeFirstError=message;
+   if(status){status.style.color='#ffb8a6';status.textContent='3D STARTUP ERROR: '+message.slice(0,160)}
+  }
+ },true);
+ window.addEventListener('unhandledrejection',function(e){
+  var message=String(e.reason?.message||e.reason||'3D engine error');
+  if(!window.__strikeFirstError){
+   window.__strikeFirstError=message;
+   if(status){status.style.color='#ffb8a6';status.textContent='3D STARTUP ERROR: '+message.slice(0,160)}
+  }
+ });
+ setTimeout(function(){
+  if(!status||window.__strikeFirstError)return;
+  if(window.__strikeBoot?.ready){
+   status.style.color='#a0f6dd';status.textContent='● 3D ENGINE READY';
+  }else{
+   status.style.color='#ffbba6';
+   status.textContent='3D ENGINE STILL LOADING — if this persists, enable WebGL/hardware acceleration in your browser.';
+  }
+ },6500);
+})();
+</script>
 <script type="module" src="/strike.js"></script>
 </body>
 </html>
