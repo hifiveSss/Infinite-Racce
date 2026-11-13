@@ -1,4 +1,17 @@
-# The Game Room — Four multiplayer browser games
+# The Game Room — Five multiplayer browser games
+
+
+## Neon Strike: original third-person arcade football
+
+**Play:** `https://infinite-race.onrender.com/strike.html`.
+
+The game takes inspiration from the *genre* of fast, behind-the-player football games, including the action-focused perspective of Sloclap's Rematch, but is **an original small-scale browser game**, not a replica of Rematch. It does not contain Rematch's characters, graphics, code, audio, branding, progression systems or complete competitive netcode. It is not affiliated with Sloclap. Art and stadium assets are created procedurally using Three.js.
+
+**Features:** 3v3 matches with private room codes, join and choose your side (cyan or coral), bot fill if fewer than six friends are present, a four-minute clock, walled pitch, working goalies, team AI, server-authoritative ball and score, built-in controls screen, keyboard/mouse and gamepad input, touch controls, camera follow, match HUD, minimap, shot charging, slide tackles, passing, lob passes and a rematch button. It's designed primarily for desktop browsers with WebGL.
+
+**Controls:** WASD move relative to camera; mouse aim/turn; Shift sprint; hold/release left mouse to shoot; right mouse or K pass; F or Space tackle; Q lob; E call pass; H help, R recenter camera. Gamepad: left stick movement, right stick look, right trigger hold/release shoot, RB pass, X tackle, Y lob, LB sprint. Touch screens have a joystick and action buttons.
+
+**Technical notes:** Active rooms, bots and match state are kept in server memory, not PostgreSQL. A Render restart ends live matches. The authoritative server runs at 30 ticks per second and broadcasts snapshots at 10Hz; clients smooth visual positions. Room codes aren't accounts or persistent lobbies. For full competitive multiplayer, the next steps would include client-side prediction, interpolation buffers, lag compensation, reconnect tokens, server monitoring, improved goalie animations and ranked matchmaking.
 
 ## Shared First Discoveries & fully local AI
 
@@ -6,14 +19,15 @@
 
 **Setup:** [Shared database and local Gemma recipe generator](SHARED_DISCOVERIES_LOCAL_AI.md).
 
-The site now starts with four playable games:
+The site now starts with five playable games:
 
 - **Infinite Race** — `/race.html` (crafting, races, bingo and elimination battles).
 - **Bluff Club** — `/bluff.html` (2–12 players; 51 newly curated extra-hard questions from NASA, Natural History Museum and Smithsonian sources; the fact and source are revealed after voting).
 - **Context Crash** — `/context.html` (3–12 players; an **original** out-of-context comedy game with a separate multiplayer namespace). Each player answers a private innocent prompt, receives another player's quote without its original question, rewrites the context, then votes anonymously on the funniest disaster. It has room codes, timed phases, a host skip option, scoring, a final doubled-points round, and a leaderboard.
 - **Tee Riot** — `/tee.html` (3–12 players; an original T-shirt party game inspired by drawing/slogan competitions). Everyone designs an image and submits two slogans; the server pairs art with another player's slogan, then runs an elimination tournament with private artist-vote restrictions, byes for odd player counts, scoring and a champion reveal. The drawing editor has a smooth brush, eraser, shape tools, fill bucket, eyedropper, text stamp, palette/custom colours, brush size, opacity, transparent PNG export, history undo/redo, touch support and a live mockup with shirt-colour selection.
+- **Neon Strike** — `/strike.html` (new original **3D arcade football** game): third-person WebGL field, one controlled player in 3v3 matches, bot-filled positions, friend room codes for up to six players, timed games, stamina/sprint, dribbling, chargeable shots, lob shots, passing, ball calling and slide tackles. Controls are WASD+mouse on desktop, standard gamepad, or touch virtual controls on supported devices. The server owns physics and scorekeeping; rendering uses a locally served, pinned `three` dependency rather than a remote CDN.
 
-All four games run on the same Render service and are accessible from the game-card homepage at `/`. Context Crash is independently implemented, not an official Jackbox game and not affiliated with Jackbox.
+All five games run on the same Render service and are accessible from the game-card homepage at `/`. Context Crash is independently implemented, not an official Jackbox game and not affiliated with Jackbox.
 
 **Tee Riot scoring:** +100 points to the artist and +40 to the assigned slogan writer for each vote the shirt receives. A final tournament winner is crowned after 3–12 players' shirts face off. Images are sent as limited-size WebP or PNG data URLs (not permanently stored). Drawing, slogan and match phases have automatic timeouts.
 

@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/neon-strike.test.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
     "emojilib": "^4.0.3",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "three": "0.181.2"
   },
   "engines": {
     "node": ">=18"

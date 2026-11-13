@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080e22">
+<title>NEON STRIKE — 3D Arcade Football | The Game Room</title>
+<style>
+:root{font-family:Inter,ui-rounded,system-ui,Segoe UI,Arial,sans-serif;color:#f5fbff;background:#060b1b}
+*{box-sizing:border-box}body{margin:0;overflow:hidden}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}
+#viewport{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+#sceneShade{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,#05081b75,transparent 20%,transparent 70%,#05091b95),radial-gradient(ellipse at center,transparent 30%,#04081d5c);z-index:1}
+.hidden{display:none!important}
+.topnav{position:absolute;top:22px;left:clamp(12px,3vw,42px);z-index:7;display:flex;align-items:center;gap:15px}
+.topnav .brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:1000;letter-spacing:.16em}
+.topnav .brand b{display:grid;place-items:center;width:35px;height:35px;background:#f3df5b;color:#07122a;border-radius:10px;clip-path:polygon(18% 0,100% 0,84% 100%,0% 100%);font-size:21px}
+.topnav a{font-size:12px;color:#bfcae8;text-decoration:none;transition:color .12s}.topnav a:hover{color:#fff}
+.modal{position:fixed;z-index:6;inset:0;display:flex;align-items:center;justify-content:center;padding:72px 18px 24px;background:linear-gradient(90deg,#05091eea,#080e25ca 60%,#070c20a6)}
+.window{position:relative;max-width:1050px;width:100%;border:1px solid #b1c6ff31;border-radius:28px;background:linear-gradient(145deg,#111a33ed,#0c1229eb 70%);box-shadow:0 40px 120px #000b;overflow:hidden;backdrop-filter:blur(16px)}
+.modal .window{max-height:calc(100dvh - 86px);overflow:auto;scrollbar-width:thin}
+.window::after{content:'';position:absolute;top:-150px;right:-180px;width:520px;height:520px;background:radial-gradient(circle,#41e5ed21,transparent 67%);pointer-events:none}
+.menuBody{padding:clamp(22px,5vw,65px);max-width:720px;position:relative;z-index:2}
+.eyebrow{font-size:11px;letter-spacing:.27em;font-weight:1000;color:#83ddeb}
+.display{font-size:clamp(53px,9vw,112px);line-height:.84;letter-spacing:-.095em;font-weight:1000;margin:18px 0 28px;text-shadow:0 9px 40px #36c3ea26}
+.display span{color:#95f5e0;display:block}
+.lead{font-size:clamp(14px,1.8vw,19px);color:#c8d6ef;line-height:1.6;max-width:540px;margin:0 0 22px}
+.tagline{font-size:12px;color:#91a6ce;font-weight:800;letter-spacing:.1em;margin-bottom:26px}
+.tagline strong{color:#fff}
+.actions{display:flex;flex-wrap:wrap;gap:11px;align-items:center}
+.btn{border:1px solid #ffffff20;background:#202c50;color:#f0faff;border-radius:12px;padding:14px 20px;font-size:13px;font-weight:1000;letter-spacing:.01em;transition:transform .13s,background .13s,box-shadow .13s}
+.btn:hover:not(:disabled){transform:translateY(-2px);background:#344366}
+.btn.primary{color:#081929;background:#97f5d9;border-color:#b0ffee;box-shadow:0 5px 0 #2b968c}
+.btn.primary:hover:not(:disabled){background:#c2ffe9}
+.btn.secondary{background:#171f39;border-color:#8aa2c052}
+button:focus-visible,input:focus-visible{outline:3px solid #ddffa3;outline-offset:3px}
+.menuRow{display:grid;grid-template-columns:1fr auto;gap:9px;max-width:400px;margin-top:13px}
+.input{background:#0c1428;border:1px solid #536180;color:#fff;border-radius:10px;padding:13px 14px;outline:none;min-width:0;width:100%}
+.input::placeholder{color:#8392b4}
+.fieldLabel{font-size:11px;color:#a8bade;font-weight:1000;letter-spacing:.12em;margin:0 0 8px}
+.settingsRow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:22px}
+.settingsRow input{max-width:240px}
+.sideArt{position:absolute;right:-30px;top:40px;width:430px;height:100%;display:flex;justify-content:center;align-items:center;pointer-events:none;opacity:.85;transform:rotate(-12deg)}
+.sideArt .number{font-size:clamp(200px,34vw,440px);line-height:1;color:#d0eaff08;font-weight:1000;letter-spacing:-.12em;text-shadow:0 0 85px #2adddd38}
+.hintPanel{border-top:1px solid #ffffff18;background:#111b31c9;padding:17px clamp(22px,5vw,65px);font-size:12px;line-height:1.8;color:#93a7c5;display:flex;gap:14px;flex-wrap:wrap}
+.key{display:inline-block;background:#ffffff12;border:1px solid #ffffff35;border-radius:5px;padding:1px 6px;font-size:10px;color:#fff;font-weight:900}
+#lobby .window{max-width:800px}#lobby .menuBody{max-width:100%}
+.roomTag{font-size:clamp(38px,7vw,64px);font-weight:1000;letter-spacing:.18em;color:#a8f5d8;margin:12px 0}
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:21px 0}
+.teamBox{border-radius:14px;border:1px solid #ffffff2a;background:#ffffff0b;overflow:hidden}
+.teamHead{padding:13px 17px;font-weight:1000;letter-spacing:.11em;font-size:12px;color:#060d1c}
+.teamBox.cyan .teamHead{background:#8ef1db}.teamBox.coral .teamHead{background:#ff997c}
+.teamNames{padding:13px 18px;min-height:106px;font-size:14px;color:#dce4f7;line-height:1.9}
+.teamNames .you{font-weight:1000;color:#fff}.teamNames .bot{color:#8792af}
+.roomButtons{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.smallPrint{font-size:12px;color:#9baed0;margin:11px 0 0}
+#hud{position:fixed;inset:0;z-index:3;pointer-events:none}
+.scoreBar{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;background:#081125e8;border:1px solid #b8d9ff4b;border-radius:13px;box-shadow:0 15px 40px #01061698;overflow:hidden;min-width:min(440px,76vw);justify-content:space-between;backdrop-filter:blur(9px)}
+.scoreTeam{display:flex;align-items:center;gap:14px;font-weight:1000;padding:11px 16px;font-size:13px;letter-spacing:.06em}
+.scoreTeam.cyan{color:#8cf7e3}.scoreTeam.coral{color:#ff997e}
+.scoreTeam strong{font-size:27px;color:#fff}
+.timePanel{padding:7px 14px;background:#26334c8f;font-size:21px;color:#fff;letter-spacing:.03em;font-weight:1000;font-variant-numeric:tabular-nums}
+#reticle{position:absolute;left:50%;top:49%;width:35px;height:35px;transform:translate(-50%,-50%);display:grid;place-items:center;color:#ffffffd1;font-size:31px;text-shadow:0 0 12px #00ffcb;font-weight:400}
+#reticle::before,#reticle::after{content:'';position:absolute;border:1px solid #ffffff91;border-radius:50%;width:20px;height:20px}
+#reticle::after{width:4px;height:4px;background:#fff;border:0}
+#reticle.hasBall::before{border-color:#8ffddd;box-shadow:0 0 15px #7effe6}
+.bottomBar{position:absolute;bottom:32px;left:clamp(12px,3vw,44px);display:flex;flex-direction:column;gap:10px;min-width:240px}
+.yourName{display:flex;gap:8px;align-items:center;font-weight:1000;font-size:17px;letter-spacing:.06em;text-shadow:0 4px 8px #000d}
+.yourName .pip{width:11px;height:11px;border-radius:3px;background:#97f3dc}
+.statName{font-size:10px;letter-spacing:.12em;font-weight:1000;color:#c0c8e2}
+.meter{height:10px;background:#080e24cc;border-radius:20px;border:1px solid #ffffff51;overflow:hidden;width:min(265px,55vw)}
+.meter .fill{height:100%;background:linear-gradient(90deg,#39c2ad,#9cffdc);width:100%;transition:width .11s}
+.meter.charge .fill{background:linear-gradient(90deg,#ffc064,#ff5f75);width:0}
+.controlHelp{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:#081126b9;border:1px solid #ffffff2d;border-radius:13px;padding:10px 15px;font-size:11px;color:#d6e4f3;display:flex;gap:13px;white-space:nowrap;backdrop-filter:blur(12px);letter-spacing:.02em}
+.controlHelp b{color:#9cf7e8}
+#miniWrap{position:absolute;bottom:20px;right:24px;background:#071126c4;border:1px solid #ffffff40;border-radius:15px;padding:11px;box-shadow:0 8px 20px #0008}
+#minimap{width:130px;height:180px;display:block}
+#sprintNotice{position:absolute;top:70px;left:50%;transform:translateX(-50%);font-size:12px;color:#b4ffdb;text-align:center;font-weight:900;letter-spacing:.11em}
+#goalBanner{position:fixed;z-index:5;top:25%;left:50%;transform:translateX(-50%) scale(.87);opacity:0;pointer-events:none;text-align:center;transition:opacity .18s,transform .24s;filter:drop-shadow(0 12px 20px #0009)}
+#goalBanner.show{opacity:1;transform:translateX(-50%) scale(1)}
+#goalBanner .massive{font-size:clamp(74px,14vw,195px);line-height:.9;font-weight:1000;letter-spacing:-.11em;color:#fff;text-shadow:-5px 7px #23c7b4,0 10px 80px #27e6d0}
+#goalBanner p{background:#09182ede;border-radius:12px;padding:10px 20px;font-size:17px;letter-spacing:.12em;font-weight:1000;margin:12px auto}
+#pointerPrompt{position:absolute;top:61%;left:50%;transform:translateX(-50%);background:#09172fe0;border:1px solid #9bfff39c;color:#bafff1;padding:13px 23px;border-radius:11px;font-size:13px;font-weight:900;pointer-events:none;text-align:center;backdrop-filter:blur(10px)}
+#pauseMessage{position:fixed;z-index:5;top:95px;left:50%;transform:translateX(-50%);font-size:12px;color:#e3d5c0;background:#111a2bd9;padding:10px 17px;border-radius:9px;pointer-events:none}
+#toast{position:fixed;bottom:30%;left:50%;transform:translate(-50%,14px);z-index:9;opacity:0;background:#e7ffdc;color:#0b2b24;border-radius:12px;min-width:220px;max-width:85vw;text-align:center;padding:13px 18px;font-size:13px;font-weight:950;box-shadow:0 15px 40px #0007;transition:.2s;pointer-events:none}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#finished .window{max-width:640px;text-align:center}
+#finished .menuBody{max-width:100%}
+#endTitle{font-weight:1000;font-size:clamp(42px,9vw,90px);letter-spacing:-.07em;line-height:1.05;margin:23px 0}
+#finalScore{font-size:43px;color:#a2f6e0;font-weight:1000;margin:15px 0 25px}
+#helpModal{background:#05091dd9}.helpWindow{max-width:650px;border:1px solid #a0b1d45e;border-radius:21px;background:#0e1733;padding:30px;box-shadow:0 40px 90px #000c}
+.helpWindow h2{font-size:35px;letter-spacing:-.05em;margin:0 0 15px}.keysGrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;font-size:13px;color:#d3ddf0;line-height:1.6}.keysGrid b{color:#9df7dc}
+#helpClose{margin-top:18px}
+#helpButton{position:absolute;top:78px;right:22px;border:1px solid #ffffff4b;border-radius:99px;padding:8px 12px;background:#0b1939c9;color:#f9ffed;font-size:11px;font-weight:950;pointer-events:auto}
+#hudLeave{position:absolute;top:78px;left:24px;color:#d0dfef;background:#101933ad;border:1px solid #ffffff36;border-radius:99px;font-size:11px;padding:8px 12px;font-weight:900;pointer-events:auto}
+#connectivity{position:absolute;top:17px;right:15px;font-size:11px;color:#bcf2db;background:#08182bc2;border:1px solid #aaffd72e;padding:8px 10px;border-radius:99px}
+#hud .mobileControls{display:none}
+@media(max-width:1050px){.sideArt{display:none}.controlHelp{display:none}}
+@media(max-width:720px){.topnav{top:12px;left:14px}.modal{padding:65px 10px 10px}.menuBody{padding:24px 20px}.window{border-radius:17px}.hintPanel{padding:15px 18px}.scoreBar{top:12px;min-width:280px;transform:translateX(-50%);border-radius:10px}.scoreTeam{padding:8px 9px;font-size:10px;gap:5px}.scoreTeam strong{font-size:19px}.timePanel{font-size:15px;padding:10px}.bottomBar{bottom:12px;left:12px;min-width:180px}.meter{width:180px}#miniWrap{right:10px;bottom:10px;padding:5px}#minimap{width:82px;height:116px}.topnav .brand{font-size:11px}.topnav a{display:none}.teams{gap:7px}.teamNames{padding:9px;font-size:12px}.teamHead{padding:11px}.display{font-size:clamp(56px,11vw,78px)}.keysGrid{grid-template-columns:1fr}}
+@media(pointer:coarse){
+ #hud .mobileControls{display:flex;position:absolute;inset:auto 10px 155px;justify-content:space-between;align-items:end;gap:10px;pointer-events:none}
+ #joyzone{width:140px;height:140px;border:2px solid #ffffff56;border-radius:100%;background:#0c183583;touch-action:none;position:relative;pointer-events:auto;display:grid;place-items:center;font-size:11px;color:#e4effb;font-weight:900}
+ #joystick{position:absolute;width:54px;height:54px;border-radius:100%;background:#b4ffeeae;border:2px solid #e5fffb;left:43px;top:43px;pointer-events:none}
+ .mobileActions{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;pointer-events:auto}
+ .mobileActions button{min-width:66px;min-height:57px;color:#fff;font-weight:1000;font-size:11px;background:#111e3fe0;border:1px solid #d5f5ff8f;border-radius:14px;touch-action:none}
+ .mobileActions button.shoot{background:#39d7cbaa;color:#001c22}
+ #pointerPrompt{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="viewport" aria-label="3D Neon Strike football stadium"></canvas>
+<div id="sceneShade"></div>
+<nav class="topnav"><div class="brand"><b>⚡</b> NEON STRIKE</div><a href="/">← ALL GAMES</a></nav>
+<div id="menu" class="modal">
+ <div class="window">
+  <div class="sideArt"><div class="number">03</div></div>
+  <div class="menuBody">
+   <div class="eyebrow">THE GAME ROOM PRESENTS · 3D FOOTBALL</div>
+   <h1 class="display">NEON<span>STRIKE.</span></h1>
+   <p class="lead">Every touch matters. Take the pitch in fast, full-contact, third-person football. No offsides. No pauses. Just pure skill, sharp passing and unreal goals.</p>
+   <p class="tagline"><strong>3V3</strong> · REAL-TIME MULTIPLAYER · BOT TEAMMATES · NO DOWNLOADS</p>
+   <div class="settingsRow"><input id="nick" class="input" maxlength="22" placeholder="Your player name" autocomplete="nickname" aria-label="Your player name"></div>
+   <div class="actions"><button class="btn primary" id="quick">⚡ PLAY NOW — VS BOTS</button><button class="btn secondary" id="create">CREATE PRIVATE MATCH</button></div>
+   <div class="menuRow"><input id="roomInput" class="input" placeholder="FRIEND'S ROOM CODE" maxlength="6" aria-label="Friend room code" autocomplete="off"><button class="btn secondary" id="join">JOIN MATCH</button></div>
+   <p class="smallPrint">Share a private room with friends or fill the field with AI teammates and opponents.</p>
+  </div>
+  <div class="hintPanel"><span><span class="key">W A S D</span> Move</span><span><span class="key">MOUSE</span> Aim & camera</span><span><span class="key">LEFT CLICK</span> Charge & shoot</span><span><span class="key">RIGHT CLICK</span> Pass</span><span><span class="key">F</span> Tackle</span></div>
+ </div>
+</div>
+<div id="lobby" class="modal hidden">
+ <div class="window">
+  <div class="menuBody">
+   <div class="eyebrow">FRIENDLY MATCH · PRIVATE ARENA</div>
+   <h2 style="font-size:37px;margin:11px 0 0;letter-spacing:-.045em">THE TEAMS ARE FORMING.</h2>
+   <div id="roomLabel" class="roomTag">------</div>
+   <div class="roomButtons"><button id="invite" class="btn secondary">COPY INVITE LINK</button><button id="switch" class="btn secondary">SWITCH TEAM</button></div>
+   <div class="teams">
+    <div class="teamBox cyan"><div class="teamHead">CYAN SQUAD</div><div id="cyanTeam" class="teamNames"></div></div>
+    <div class="teamBox coral"><div class="teamHead">CORAL SQUAD</div><div id="coralTeam" class="teamNames"></div></div>
+   </div>
+   <p class="smallPrint">Up to six people. Empty positions are filled by bots. Choose your team before kickoff.</p>
+   <div class="roomButtons" style="margin-top:18px"><button id="start" class="btn primary">KICK OFF ⚡</button><button id="lobbyLeave" class="btn secondary">BACK TO MENU</button></div>
+   <p id="hostNote" class="smallPrint"></p>
+  </div>
+ </div>
+</div>
+<div id="hud" class="hidden">
+ <div class="scoreBar"><div class="scoreTeam cyan">CYAN <strong id="score0">0</strong></div><div class="timePanel" id="clock">04:00</div><div class="scoreTeam coral"><strong id="score1">0</strong> CORAL</div></div>
+ <div id="connectivity">● LIVE</div><div id="reticle"></div>
+ <div id="sprintNotice" class="hidden">KICKOFF</div>
+ <div class="bottomBar"><div class="yourName"><span class="pip" id="mypip"></span><span id="myname">PLAYER 01</span></div>
+ <div class="statName">STAMINA</div><div class="meter"><div class="fill" id="stamina"></div></div>
+ <div class="statName">SHOT POWER</div><div class="meter charge"><div class="fill" id="charge"></div></div></div>
+ <div class="controlHelp"><span><b>WASD</b> Move</span><span><b>SHIFT</b> Sprint</span><span><b>HOLD CLICK</b> Shoot</span><span><b>RMB</b> Pass</span><span><b>F</b> Tackle</span><span><b>Q</b> Lob</span><span><b>E</b> Call pass</span><span><b>H</b> Help</span></div>
+ <div id="miniWrap"><canvas id="minimap" width="160" height="210" aria-label="Pitch minimap"></canvas></div>
+ <button id="helpButton">? CONTROLS</button><button id="hudLeave">← LEAVE</button>
+ <div id="pointerPrompt">CLICK THE PITCH TO TAKE CONTROL</div>
+ <div class="mobileControls"><div id="joyzone">MOVE<div id="joystick"></div></div><div class="mobileActions"><button data-touch-action="tackle">TACKLE</button><button data-touch-action="pass">PASS</button><button data-touch-action="lob">LOB</button><button class="shoot" id="touchShoot">SHOOT</button><button data-touch-action="sprint">SPRINT</button><button data-touch-action="call">CALL</button></div></div>
+</div>
+<div id="goalBanner"><div class="massive">GOAL!</div><p id="goalInfo">WHAT A FINISH!</p></div>
+<div id="finished" class="modal hidden"><div class="window"><div class="menuBody"><div class="eyebrow">FULL TIME · THE FINAL WHISTLE</div><div id="endTitle">CYAN WINS!</div><div id="finalScore">3 — 2</div><p class="lead" style="margin-inline:auto">The pitch is waiting. One more?</p><div class="actions" style="justify-content:center"><button id="rematch" class="btn primary">PLAY AGAIN</button><button id="finishLeave" class="btn secondary">EXIT TO MENU</button></div><p id="rematchNote" class="smallPrint"></p></div></div></div>
+<div id="helpModal" class="modal hidden"><div class="helpWindow"><div class="eyebrow">CONTROLS</div><h2>OWN THE PITCH.</h2><div class="keysGrid"><div><b>W / A / S / D</b><div>Move relative to where you're looking</div></div><div><b>MOUSE</b><div>Turn and aim. Click to lock the camera</div></div><div><b>SHIFT</b><div>Sprint (uses stamina)</div></div><div><b>HOLD LEFT CLICK</b><div>Charge a shot. Release to fire</div></div><div><b>RIGHT CLICK / K</b><div>Pass towards a teammate</div></div><div><b>F / SPACE</b><div>Lunge tackle / steal possession</div></div><div><b>Q</b><div>Chip or loft the ball</div></div><div><b>E</b><div>Call for a pass from a bot teammate</div></div><div><b>H / ESC</b><div>View controls / release mouse</div></div><div><b>GAMEPAD</b><div>Left stick move, right stick aim, RT shoot, RB pass, X tackle</div></div></div><button id="helpClose" class="btn primary">BACK TO THE PITCH</button></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="/strike.js"></script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import {starters as base,combine,allEmojis,recipeStats,emojiOf,knownCombination,
 import {attachBluffClub} from './bluff-club.js';
 import {attachContextCrash} from './context-crash.js';
 import {attachTeeRiot} from './tee-riot.js';
+import {attachNeonStrike} from './neon-strike.js';
 import {loadCommunityRecipes,communityCatalog} from './community-recipes.js';
 import {initSharedRecipes,lookupShared,publishShared,sharedRecipeStatus,validateImportRecipe,sharedCatalog} from './shared-recipes.js';
 import {generateGeminiJSON,geminiConfigured,geminiReady,geminiKeyCount,geminiKeyHealth,probeGeminiKeys} from './gemini-pool.js';
@@ -18,6 +19,9 @@ const app=express(),server=http.createServer(app),io=new Server(server);
 attachBluffClub(io); // Independent real-time multiplayer namespace for the party game.
 attachContextCrash(io); // A separate namespace for the original out-of-context party game.
 attachTeeRiot(io); // Independent multiplayer namespace for the shirt-drawing championship.
+attachNeonStrike(io); // Original authoritative 3D football game, with private room codes and bot fill.
+// Serve pinned Three.js locally rather than relying on a third-party CDN.
+app.use('/vendor',express.static('node_modules/three/build'));
 app.use(express.static('public'));
 app.get('/api/status',(_req,res)=>res.json({aiConfigured:geminiConfigured(),geminiConfigured:geminiConfigured(),geminiKeysConfigured:geminiKeyCount(),geminiHealth:geminiKeyHealth(),...recipeStats()}));
 
